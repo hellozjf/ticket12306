@@ -25,29 +25,111 @@ public class TicketConfig {
     private Integer autoCodeType;
 
     @JsonProperty("auto_code_account")
-    private Map<String, Object> autoCodeAccount;
-    private Map<String, Object> email_conf;
-    private Map<String, Object> pushbear_conf;
-    private Integer is_cdn;
-    private Integer order_type;
-    private Integer order_model;
-    private String open_time;
-    private Integer is_proxy;
+    private AutoCodeAccount autoCodeAccount;
+
+    @JsonProperty("email_conf")
+    private EmailConf emailConf;
+
+    @JsonProperty("pushbear_conf")
+    private PushbearConf pushbearConf;
+
+    @JsonProperty("is_cdn")
+    private Integer isCdn;
+
+    @JsonProperty("order_type")
+    private Integer orderType;
+
+    @JsonProperty("order_model")
+    private Integer orderModel;
+
+    @JsonProperty("open_time")
+    private String openTime;
+
+    @JsonProperty("is_proxy")
+    private Integer isProxy;
 
     @Data
-    class Set {
-        private List<String> station_dates;
-        private Boolean is_by_time;
-        private List<String> train_types;
-        private String departure_time;
-        private String arrival_time;
-        private String take_time;
-        private List<String> station_trains;
-        private String from_station;
-        private String to_station;
-        private List<String> set_type;
-        private Boolean is_more_ticket;
-        private List<String> ticke_peoples;
-//        private List<Map<String, Object>> _12306account;
+    public class Set {
+
+        @JsonProperty("station_dates")
+        private List<String> stationDates;
+
+        @JsonProperty("is_by_time")
+        private Boolean isByTime;
+
+        @JsonProperty("train_types")
+        private List<String> trainTypes;
+
+        @JsonProperty("departure_time")
+        private String departureTime;
+
+        @JsonProperty("arrival_time")
+        private String arrivalTime;
+
+        @JsonProperty("take_time")
+        private String takeTime;
+
+        @JsonProperty("station_trains")
+        private List<String> stationTrains;
+
+        @JsonProperty("from_station")
+        private String fromStation;
+
+        @JsonProperty("to_station")
+        private String toStation;
+
+        @JsonProperty("set_type")
+        private List<String> setType;
+
+        @JsonProperty("is_more_ticket")
+        private Boolean isMoreTicket;
+
+        @JsonProperty("ticke_peoples")
+        private List<String> tickePeoples;
+
+        @JsonProperty("12306account")
+        private List<Map<String, String>> account;
+    }
+
+    @Data
+    public class AutoCodeAccount {
+
+        @JsonProperty("user")
+        private String user;
+
+        @JsonProperty("pwd")
+        private String pwd;
+    }
+
+    @Data
+    public class EmailConf {
+
+        @JsonProperty("is_email")
+        private Boolean isEmail;
+
+        @JsonProperty("email")
+        private String email;
+
+        @JsonProperty("notice_email_list")
+        private String noticeEmailList;
+
+        @JsonProperty("username")
+        private String username;
+
+        @JsonProperty("password")
+        private String password;
+
+        @JsonProperty("host")
+        private String host;
+    }
+
+    @Data
+    public class PushbearConf {
+
+        @JsonProperty("is_pushbear")
+        private boolean isPushbear;
+
+        @JsonProperty("send_key")
+        private String sendKey;
     }
 }
