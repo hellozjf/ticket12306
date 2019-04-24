@@ -1,4 +1,4 @@
-package com.hellozjf.ticket12306.config;
+package com.hellozjf.ticket12306.dto;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Data;
@@ -10,7 +10,7 @@ import java.util.Map;
  * @author Jingfeng Zhou
  */
 @Data
-public class TicketConfig {
+public class TicketConfigDTO {
 
     @JsonProperty("set")
     private Set set;
