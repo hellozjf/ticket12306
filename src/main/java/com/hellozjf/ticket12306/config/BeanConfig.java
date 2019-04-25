@@ -6,6 +6,9 @@ import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import com.hellozjf.ticket12306.dto.TicketConfigDTO;
 import com.hellozjf.ticket12306.dto.UrlConfDTO;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.http.client.HttpClient;
+import org.apache.http.client.protocol.HttpClientContext;
+import org.apache.http.impl.client.HttpClients;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Bean;
@@ -13,7 +16,9 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.core.io.Resource;
 
+import javax.xml.ws.spi.http.HttpContext;
 import java.io.*;
+import java.net.HttpCookie;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
@@ -106,9 +111,14 @@ public class BeanConfig {
     }
 
     @Bean
+    public HttpClient httpClient() {
+        HttpClient httpClient = HttpClients.createDefault();
+        return httpClient;
+    }
+
+    @Bean
     public CommandLineRunner commandLineRunner() {
         return (args) -> {
-            // cdn认证
 
         };
     }
