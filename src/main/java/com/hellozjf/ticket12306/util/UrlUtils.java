@@ -1,0 +1,13 @@
+package com.hellozjf.ticket12306.util;
+
+/**
+ * @author Jingfeng Zhou
+ */
+public class UrlUtils {
+    public static String getUrl(String http, String host, String uri) {
+        if (http == null) {
+            http = "https";
+        }
+        return http + "://" + host + "/" + uri;
+    }
+}

@@ -3,8 +3,10 @@ package com.hellozjf.ticket12306.config;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
+import com.hellozjf.ticket12306.dto.OrderTicketDTO;
 import com.hellozjf.ticket12306.dto.TicketConfigDTO;
 import com.hellozjf.ticket12306.dto.UrlConfDTO;
+import com.hellozjf.ticket12306.thread.OrderTicketThread;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpClient;
 import org.apache.http.client.protocol.HttpClientContext;
@@ -117,9 +119,21 @@ public class BeanConfig {
     }
 
     @Bean
-    public CommandLineRunner commandLineRunner() {
+    public CommandLineRunner commandLineRunner(@Qualifier("mapUrlConfDTO") Map<String, UrlConfDTO> mapUrlConfDTO,
+                                               ObjectMapper objectMapper) {
         return (args) -> {
-
+            OrderTicketDTO orderTicketDTO = new OrderTicketDTO();
+            orderTicketDTO.setStationDate("2019-04-28");
+            orderTicketDTO.setStationTrain("G7535");
+            orderTicketDTO.setFromStation("杭州");
+            orderTicketDTO.setToStation("宁波");
+            orderTicketDTO.setSeatType("二等座");
+            orderTicketDTO.setTicketPeople("周靖峰");
+            orderTicketDTO.setUsername("15158037019");
+            orderTicketDTO.setPassword("Zjf@1234");
+            orderTicketDTO.setEmail("908686171@qq.com");
+            OrderTicketThread thread = new OrderTicketThread(orderTicketDTO, mapUrlConfDTO, objectMapper);
+            thread.start();
         };
     }
 }
