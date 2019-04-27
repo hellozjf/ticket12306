@@ -100,7 +100,6 @@ public class BeanConfig {
             log.debug("urls = {}", urls);
             for (Iterator<String> iter = urls.fieldNames(); iter.hasNext(); ) {
                 String fieldName = iter.next();
-                log.debug("{}", fieldName);
                 JsonNode jsonNode = urls.get(fieldName);
                 String s = jsonNode.toString();
                 UrlConfDTO urlConfDTO = objectMapper.readValue(s, UrlConfDTO.class);
