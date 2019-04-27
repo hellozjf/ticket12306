@@ -18,7 +18,7 @@ urls = {
     },
     "uamtk-static": {  # 登录接口
         "req_url": "/passport/web/auth/uamtk-static",
-        "req_type": "get",
+        "req_type": "post",
         "Referer": "https://kyfw.12306.cn/otn/resources/login.html",
         "Host": "kyfw.12306.cn",
         "Content-Type": 1,
@@ -128,6 +128,18 @@ urls = {
     },
     "loginInitCdn1": {  # 登录页面
         "req_url": "/otn/resources/login.html",
+        "req_type": "get",
+        "Referer": "https://kyfw.12306.cn/otn/view/index.html",
+        "Host": "kyfw.12306.cn",
+        "re_try": 1,
+        "re_time": 1,
+        "s_time": 0.1,
+        "is_logger": False,
+        "is_test_cdn": False,
+        "is_json": False,
+    },
+    "loginBanner": {  # 登录页面用到的，不太清楚
+        "req_url": "/otn/index12306/getLoginBanner",
         "req_type": "get",
         "Referer": "https://kyfw.12306.cn/otn/view/index.html",
         "Host": "kyfw.12306.cn",
