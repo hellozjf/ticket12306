@@ -12,11 +12,14 @@ import org.apache.http.client.HttpClient;
 import org.apache.http.client.entity.UrlEncodedFormEntity;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpPost;
+import org.apache.http.client.methods.HttpUriRequest;
 import org.apache.http.client.protocol.HttpClientContext;
 import org.apache.http.impl.client.HttpClients;
 import org.apache.http.impl.cookie.BasicClientCookie;
 import org.apache.http.message.BasicNameValuePair;
 import org.apache.http.util.EntityUtils;
+import org.springframework.http.HttpMethod;
+import org.springframework.util.StringUtils;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -272,19 +275,25 @@ public class OrderTicketThread extends Thread {
                         Map<String, String> postParams,
                         String... params) throws IOException {
 
+        // 获取请求url，并为它赋上参数
         UrlConfDTO urlConfDTO = mapUrlConfDTO.get(url);
         String reqUrl = urlConfDTO.getReqUrl();
         for (int i = 0; i < params.length; i++) {
             reqUrl = reqUrl.replaceAll("\\{" + i + "\\}", params[i]);
         }
 
+        // 构造HttpGet或者HttpPost
+        HttpUriRequest httpUriRequest = null;
         HttpResponse httpResponse = null;
-        if (urlConfDTO.getReqType().equals("get")) {
+        if (urlConfDTO.getReqType().equalsIgnoreCase(HttpMethod.GET.name())) {
             HttpGet httpGet = new HttpGet(UrlUtils.getUrl(urlConfDTO.getHttpType(), urlConfDTO.getHost(), reqUrl));
-//        httpGet.setHeader(HttpHeaders.REFERER, urlConfDTO.getReferer());
-            httpResponse = httpClient.execute(httpGet, httpClientContext);
+            httpGet.setHeader(HttpHeaders.REFERER, urlConfDTO.getReferer());
+            httpGet.setHeader(HttpHeaders.HOST, urlConfDTO.getHost());
+            httpUriRequest = httpGet;
         } else {
             HttpPost httpPost = new HttpPost(UrlUtils.getUrl(urlConfDTO.getHttpType(), urlConfDTO.getHost(), reqUrl));
+            httpPost.setHeader(HttpHeaders.REFERER, urlConfDTO.getReferer());
+            httpPost.setHeader(HttpHeaders.HOST, urlConfDTO.getHost());
             if (postParams != null) {
                 List<NameValuePair> formParams = new ArrayList<>();
                 for (Map.Entry<String, String> entry : postParams.entrySet()) {
@@ -293,7 +302,22 @@ public class OrderTicketThread extends Thread {
                 UrlEncodedFormEntity requestEntity = new UrlEncodedFormEntity(formParams, Consts.UTF_8);
                 httpPost.setEntity(requestEntity);
             }
-            httpResponse = httpClient.execute(httpPost, httpClientContext);
+            httpUriRequest = httpPost;
+        }
+
+        // 如果没有得到值，则一直重试，重试到有值，或者超过最大次数为止
+        for (int i = 0; i < urlConfDTO.getReTry(); i++) {
+            httpResponse = httpClient.execute(httpUriRequest, httpClientContext);
+            HttpEntity httpEntity = httpResponse.getEntity();
+            String result = EntityUtils.toString(httpEntity);
+            if (!StringUtils.isEmpty(result)) {
+                return result;
+            }
+            try {
+                Thread.sleep((long) (urlConfDTO.getSTime() * 1000));
+            } catch (InterruptedException e) {
+                log.error("e = {}", e);
+            }
         }
 
         HttpEntity httpEntity = httpResponse.getEntity();
@@ -308,9 +332,134 @@ public class OrderTicketThread extends Thread {
      * @return
      * @throws IOException
      */
-    private String getJsonValue(String json, String key) throws IOException {
+    private String getStringJsonValue(String json, String key) throws IOException {
         JsonNode jsonNode = objectMapper.readTree(json);
         return jsonNode.get(key).textValue();
+    }
+
+    /**
+     * 获取某个key对应的value
+     * @param json
+     * @param key
+     * @return
+     * @throws IOException
+     */
+    private Integer getIntegerJsonValue(String json, String key) throws IOException {
+        JsonNode jsonNode = objectMapper.readTree(json);
+        return jsonNode.get(key).intValue();
+    }
+
+    /**
+     * 打开登录页面，访问uamtk-static
+     * @param httpClient
+     * @param httpClientContext
+     * @return
+     * @throws IOException
+     */
+    private String auth(HttpClient httpClient, HttpClientContext httpClientContext) throws IOException {
+
+        String result = null;
+        Map<String, String> postParams = null;
+
+        // 访问/otn/resources/login.html
+        doIt(httpClient, httpClientContext, "loginInitCdn1", null);
+
+        // 访问/passport/web/auth/uamtk-static
+        postParams = new HashMap<>();
+        postParams.put("appid", "otn");
+        result = doIt(httpClient, httpClientContext, "uamtk-static", postParams);
+        log.debug("result = {}", result);
+        return result;
+    }
+
+    /**
+     * 执行登录操作
+     * @param httpClient
+     * @param httpClientContext
+     * @throws IOException
+     */
+    private String login(HttpClient httpClient, HttpClientContext httpClientContext) throws IOException {
+
+        String result = null;
+        String json = null;
+        String image = null;
+        String dfp = null;
+        Map<String, String> postParams = null;
+
+        while (true) {
+
+            // 访问/otn/login/conf
+            result = doIt(httpClient, httpClientContext, "loginConf", null);
+            log.debug("result = {}", result);
+
+            // 打开登录页面，访问uamtk-static
+            auth(httpClient, httpClientContext);
+
+            // 访问/otn/HttpZF/logdevice
+            result = doIt(httpClient, httpClientContext, "getDevicesId", null, String.valueOf(System.currentTimeMillis()));
+            log.debug("result = {}", result);
+            json = getMatch(result, ".*\\('(.*)'\\)");
+            log.debug("json = {}", json);
+            dfp = getStringJsonValue(json, "dfp");
+            log.debug("dfp = {}", dfp);
+            httpClientContext.getCookieStore().addCookie(new BasicClientCookie("RAIL_DEVICEID", dfp));
+
+            // 访问/passport/captcha/captcha-image64，获取验证码
+            result = doIt(httpClient, httpClientContext, "getCodeImg1", null, String.valueOf(System.currentTimeMillis()));
+            log.debug("result = {}", result);
+            json = getMatch(result, ".*\\((.*)\\)");
+            log.debug("json = {}", json);
+            image = getStringJsonValue(json, "image");
+            log.debug("image = {}", image);
+            log.info("获取到验证码");
+
+            // 获取验证码坐标
+            String answer = getAnswer(image);
+            log.debug("answer = {}", answer);
+
+            // 打开登录页面，访问uamtk-static
+            auth(httpClient, httpClientContext);
+
+            // 访问/passport/captcha/captcha-check，验证验证码
+            result = doIt(httpClient, httpClientContext, "codeCheck1", null, answer, String.valueOf(System.currentTimeMillis()));
+            log.debug("result = {}", result);
+            json = getMatch(result, ".*\\((.*)\\)");
+            log.debug("json = {}", json);
+            result = getStringJsonValue(json, "result_code");
+            log.debug("result = {}", result);
+            log.info("验证码验证成功");
+
+            // 登录
+            postParams = new HashMap<>();
+            postParams.put("username", orderTicketDTO.getUsername());
+            postParams.put("password", orderTicketDTO.getPassword());
+            postParams.put("appid", "otn");
+            postParams.put("answer", answer);
+            result = doIt(httpClient, httpClientContext, "login", postParams);
+            log.debug("result = {}", result);
+
+            if (! StringUtils.isEmpty(result)) {
+                Integer resultCode = getIntegerJsonValue(result, "result_code");
+                if (resultCode.intValue() == 0) {
+                    // 打开登录页面，访问uamtk-static
+                    String authResult = auth(httpClient, httpClientContext);
+                    String newapptk = getStringJsonValue(authResult, "newapptk");
+                    if (newapptk != null) {
+                        log.info("登录成功");
+                        return newapptk;
+                    }
+                } else {
+                    log.error("unknow");
+                }
+            }
+
+            try {
+                Thread.sleep(1000);
+            } catch (InterruptedException e) {
+                log.debug("e = {}", e);
+            }
+
+        }
     }
 
     /**
@@ -321,63 +470,27 @@ public class OrderTicketThread extends Thread {
         try {
             HttpClient httpClient = HttpClients.createDefault();
             HttpClientContext httpClientContext = HttpClientContext.create();
-            String result = null;
-            String json = null;
-            String image = null;
             Map<String, String> postParams = null;
+            String result = null;
+            Integer resultCode = null;
 
-            // 访问/otn/resources/login.html
-            doIt(httpClient, httpClientContext, "loginInitCdn1", null);
+            // 访问/otn/leftTicket/init
+            doIt(httpClient, httpClientContext, "left_ticket_init", null);
 
-            // 访问/otn/login/conf
-            result = doIt(httpClient, httpClientContext, "loginConf", null);
+            // 进行登录操作
+            result = login(httpClient, httpClientContext);
             log.debug("result = {}", result);
 
-            // 访问/otn/index12306/getLoginBanner
-            result = doIt(httpClient, httpClientContext, "loginBanner", null);
-            log.debug("result = {}", result);
-
-            // 访问/passport/web/auth/uamtk-static
+            // 登录成功后，显示用户名
             postParams = new HashMap<>();
-            postParams.put("appid", "otn");
-            result = doIt(httpClient, httpClientContext, "uamtk-static", postParams);
-            log.debug("result = {}", result);
-
-            // 获取验证码
-            result = doIt(httpClient, httpClientContext, "getCodeImg1", null, String.valueOf(System.currentTimeMillis()));
-            log.debug("result = {}", result);
-            json = getMatch(result, ".*\\((.*)\\)");
-            log.debug("json = {}", json);
-            image = getJsonValue(json, "image");
-            log.debug("image = {}", image);
-
-            // 获取验证码坐标
-            String answer = getAnswer(image);
-            log.debug("answer = {}", answer);
-
-            // 验证验证码
-            result = doIt(httpClient, httpClientContext, "codeCheck1", null, answer, String.valueOf(System.currentTimeMillis()));
-            log.debug("result = {}", result);
-            json = getMatch(result, ".*\\((.*)\\)");
-            log.debug("json = {}", json);
-            result = getJsonValue(json, "result_code");
-            log.debug("result = {}", result);
-
-            // 登录
-            postParams = new HashMap<>();
-            postParams.put("username", orderTicketDTO.getUsername());
-            postParams.put("password", orderTicketDTO.getPassword());
-            postParams.put("appid", "otn");
-            postParams.put("answer", answer);
-            result = doIt(httpClient, httpClientContext, "login", postParams);
-            log.debug("result = {}", result);
-            // todo 奇怪，这里登录不进去
-
-            // 登录
-            postParams = new HashMap<>();
-            postParams.put("appid", "otn");
-            result = doIt(httpClient, httpClientContext, "auth", postParams);
-            log.debug("result = {}", result);
+            postParams.put("tk", result);
+            result = doIt(httpClient, httpClientContext, "uamauthclient", postParams);
+            resultCode = getIntegerJsonValue(result, "result_code");
+            if (resultCode.intValue() == 0) {
+                log.info("欢迎 {} 登录", getStringJsonValue(result, "username"));
+            } else {
+                log.debug("unknown");
+            }
 
         } catch (IOException e) {
             log.error("e = {}", e);
