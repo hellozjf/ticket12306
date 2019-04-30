@@ -6,6 +6,7 @@ import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import com.hellozjf.ticket12306.dto.OrderTicketDTO;
 import com.hellozjf.ticket12306.dto.TicketConfigDTO;
 import com.hellozjf.ticket12306.dto.UrlConfDTO;
+import com.hellozjf.ticket12306.service.StationNameService;
 import com.hellozjf.ticket12306.thread.OrderTicketThread;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpClient;
@@ -58,6 +59,22 @@ public class BeanConfig {
             log.error("e = {}", e);
             return new TicketConfigDTO();
         }
+    }
+
+    @Bean("mapSeatConf")
+    public Map<String, Integer> mapSeatConf() {
+        Map<String, Integer> map = new HashMap<>();
+        map.put("商务座", 32);
+        map.put("一等座", 31);
+        map.put("二等座", 30);
+        map.put("特等座", 25);
+        map.put("软卧", 23);
+        map.put("硬卧", 28);
+        map.put("软座", 24);
+        map.put("硬座", 29);
+        map.put("无座", 26);
+        map.put("动卧", 33);
+        return map;
     }
 
     /**
@@ -119,10 +136,12 @@ public class BeanConfig {
 
     @Bean
     public CommandLineRunner commandLineRunner(@Qualifier("mapUrlConfDTO") Map<String, UrlConfDTO> mapUrlConfDTO,
-                                               ObjectMapper objectMapper) {
+                                               ObjectMapper objectMapper,
+                                               StationNameService stationNameService,
+                                               @Qualifier("mapSeatConf") Map<String, Integer> mapSeatConf) {
         return (args) -> {
             OrderTicketDTO orderTicketDTO = new OrderTicketDTO();
-            orderTicketDTO.setStationDate("2019-04-28");
+            orderTicketDTO.setStationDate("2019-05-18");
             orderTicketDTO.setStationTrain("G7535");
             orderTicketDTO.setFromStation("杭州");
             orderTicketDTO.setToStation("宁波");
@@ -131,7 +150,8 @@ public class BeanConfig {
             orderTicketDTO.setUsername("15158037019");
             orderTicketDTO.setPassword("Zjf@1234");
             orderTicketDTO.setEmail("908686171@qq.com");
-            OrderTicketThread thread = new OrderTicketThread(orderTicketDTO, mapUrlConfDTO, objectMapper);
+            OrderTicketThread thread = new OrderTicketThread(orderTicketDTO,
+                    mapUrlConfDTO, objectMapper, stationNameService, mapSeatConf);
             thread.start();
         };
     }

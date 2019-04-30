@@ -2,8 +2,11 @@ package com.hellozjf.ticket12306.thread;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.hellozjf.ticket12306.custom.FileCookieStore;
 import com.hellozjf.ticket12306.dto.OrderTicketDTO;
 import com.hellozjf.ticket12306.dto.UrlConfDTO;
+import com.hellozjf.ticket12306.service.StationNameService;
 import com.hellozjf.ticket12306.util.UrlUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.*;
@@ -14,6 +17,7 @@ import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.client.methods.HttpUriRequest;
 import org.apache.http.client.protocol.HttpClientContext;
+import org.apache.http.cookie.Cookie;
 import org.apache.http.impl.client.HttpClients;
 import org.apache.http.impl.cookie.BasicClientCookie;
 import org.apache.http.message.BasicNameValuePair;
@@ -21,6 +25,7 @@ import org.apache.http.util.EntityUtils;
 import org.springframework.http.HttpMethod;
 import org.springframework.util.StringUtils;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -52,13 +57,29 @@ public class OrderTicketThread extends Thread {
     private ObjectMapper objectMapper;
 
     /**
+     * 站点名称和code工具
+     */
+    private StationNameService stationNameService;
+
+    /**
+     * 座位对应的ticketInfo中的序号
+     */
+    private Map<String, Integer> mapSeatConf;
+
+    /**
      * 构造方法
      * @param orderTicketDTO
      */
-    public OrderTicketThread(OrderTicketDTO orderTicketDTO, Map<String, UrlConfDTO> mapUrlConfDTO, ObjectMapper objectMapper) {
+    public OrderTicketThread(OrderTicketDTO orderTicketDTO,
+                             Map<String, UrlConfDTO> mapUrlConfDTO,
+                             ObjectMapper objectMapper,
+                             StationNameService stationNameService,
+                             Map<String, Integer> mapSeatConf) {
         this.orderTicketDTO = orderTicketDTO;
         this.mapUrlConfDTO = mapUrlConfDTO;
         this.objectMapper = objectMapper;
+        this.stationNameService = stationNameService;
+        this.mapSeatConf = mapSeatConf;
     }
 
     /**
@@ -388,6 +409,21 @@ public class OrderTicketThread extends Thread {
 
         while (true) {
 
+            // 访问/otn/login/checkUser
+            postParams = new HashMap<>();
+            postParams.put("_json_att", "");
+            result = doIt(httpClient, httpClientContext, "check_user_url", postParams);
+            if (objectMapper.readTree(result).get("data").get("flag").booleanValue()) {
+                // 已经登录过了，返回cookie中的tk
+                CookieStore cookieStore = httpClientContext.getCookieStore();
+                for (Cookie cookie : cookieStore.getCookies()) {
+                    if (cookie.getName().equalsIgnoreCase("tk")) {
+                        return cookie.getValue();
+                    }
+                }
+            }
+            log.debug("result = {}", result);
+
             // 访问/otn/login/conf
             result = doIt(httpClient, httpClientContext, "loginConf", null);
             log.debug("result = {}", result);
@@ -468,8 +504,12 @@ public class OrderTicketThread extends Thread {
     @Override
     public void run() {
         try {
-            HttpClient httpClient = HttpClients.createDefault();
+            FileCookieStore fileCookieStore = new FileCookieStore(new File("hellozjf"));
+            HttpClient httpClient = HttpClients.custom()
+                    .setDefaultCookieStore(fileCookieStore)
+                    .build();
             HttpClientContext httpClientContext = HttpClientContext.create();
+
             Map<String, String> postParams = null;
             String result = null;
             Integer resultCode = null;
@@ -488,12 +528,106 @@ public class OrderTicketThread extends Thread {
             resultCode = getIntegerJsonValue(result, "result_code");
             if (resultCode.intValue() == 0) {
                 log.info("欢迎 {} 登录", getStringJsonValue(result, "username"));
-            } else {
-                log.debug("unknown");
             }
+
+            // todo 记住，这里可能要新开一个checkUser线程
+
+            // 获取乘客列表
+            postParams = new HashMap<>();
+            postParams.put("tk", result);
+            result = doIt(httpClient, httpClientContext, "get_passengerDTOs", postParams);
+            log.debug("result = {}", result);
+            JsonNode root = objectMapper.readTree(result);
+            JsonNode data = root.get("data");
+            JsonNode normalPassengers = data.get("normal_passengers");
+            JsonNode wantNormalPassenger = null;
+            if (normalPassengers.isArray()) {
+                ArrayNode array = (ArrayNode) normalPassengers;
+                for (JsonNode normalPassenger : array) {
+                    if (normalPassenger.get("passenger_name").textValue().equals(orderTicketDTO.getTicketPeople())) {
+                        wantNormalPassenger = normalPassenger;
+                        break;
+                    }
+                }
+            }
+            log.debug("wantNormalPassenger = {}", wantNormalPassenger);
+
+            Map<String, Object> leftTicketMap = checkLeftTickets(httpClient, httpClientContext);
+
 
         } catch (IOException e) {
             log.error("e = {}", e);
+        }
+    }
+
+    private Map<String, Object> checkLeftTickets(HttpClient httpClient, HttpClientContext httpClientContext) throws IOException {
+        String result;
+        String fromStationCode = stationNameService.getStationCode(orderTicketDTO.getFromStation());
+        String toStationCode = stationNameService.getStationCode(orderTicketDTO.getToStation());
+        while (true) {
+            result = doIt(httpClient, httpClientContext, "select_url", null,
+                    orderTicketDTO.getStationDate(), fromStationCode, toStationCode, "leftTicket/query");
+            log.debug("result = {}", result);
+            // todo 这里可能需要判断有没有c_url，有的话需要重新设置doIt最后那个参数
+
+            JsonNode leftTicketNode = objectMapper.readTree(result);
+            JsonNode leftTicketData = leftTicketNode.get("data");
+            if (leftTicketData != null) {
+                JsonNode leftTicketResult = leftTicketData.get("result");
+                if (leftTicketResult.isArray()) {
+                    ArrayNode arrayNode = (ArrayNode) leftTicketResult;
+                    for (JsonNode node : arrayNode) {
+                        String[] ticketInfo = node.textValue().split("\\|");
+                        if (ticketInfo[11].equalsIgnoreCase("Y") && ticketInfo[1].equalsIgnoreCase("预订")) {
+                            int seatType = mapSeatConf.get(orderTicketDTO.getSeatType()).intValue();
+                            String isTicketPass = ticketInfo[seatType];
+                            if (! isTicketPass.equalsIgnoreCase("") &&
+                                    ! isTicketPass.equalsIgnoreCase("无") &&
+                                    ! isTicketPass.equalsIgnoreCase("*") &&
+                                    ticketInfo[3].equalsIgnoreCase(orderTicketDTO.getStationTrain())) {
+                                // 说明是我需要的火车票，打印一下
+                                log.debug("need ticket = {}", node.textValue());
+
+                                String secretStr = ticketInfo[0];
+                                String trainNo = ticketInfo[2];
+                                String queryFromStationName = ticketInfo[6];
+                                String queryToStationName = ticketInfo[7];
+                                String trainLocation = ticketInfo[15];
+                                String stationTrainCode = ticketInfo[3];
+                                String leftTicket = ticketInfo[12];
+                                String startTime = ticketInfo[8];
+                                String arrivalTime = ticketInfo[9];
+                                String distanceTime = ticketInfo[10];
+                                log.debug("startTime = {}, arrivalTime = {}, distanceTime = {}",
+                                        startTime, arrivalTime, distanceTime);
+                                Integer seat = seatType;
+
+                                Map<String, Object> leftTicketMap = new HashMap<>();
+                                leftTicketMap.put("secretStr", secretStr);
+                                leftTicketMap.put("train_no", trainNo);
+                                leftTicketMap.put("stationTrainCode", stationTrainCode);
+                                leftTicketMap.put("train_date", orderTicketDTO.getStationDate());
+                                leftTicketMap.put("query_from_station_name", queryFromStationName);
+                                leftTicketMap.put("query_to_station_name", queryToStationName);
+                                leftTicketMap.put("seat", seat);
+                                leftTicketMap.put("leftTicket", leftTicket);
+                                leftTicketMap.put("train_location", trainLocation);
+                                leftTicketMap.put("code", 000000);
+                                leftTicketMap.put("is_more_ticket_num", 1);
+                                leftTicketMap.put("cdn", null);
+                                leftTicketMap.put("status", true);
+                                return leftTicketMap;
+                            }
+                        }
+                    }
+                }
+            }
+
+            try {
+                Thread.sleep(1000);
+            } catch (InterruptedException e) {
+                log.error("e = {}", e);
+            }
         }
     }
 }
