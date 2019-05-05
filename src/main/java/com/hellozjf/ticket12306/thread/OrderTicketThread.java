@@ -65,6 +65,12 @@ public class OrderTicketThread extends Thread {
      * 座位对应的ticketInfo中的序号
      */
     private Map<String, Integer> mapSeatConf;
+    private Map<Integer, String> mapSeatConf2;
+
+    /**
+     * 作为对应购票时使用的编码
+     */
+    private Map<String, String> mapPassengerTicketStr;
 
     /**
      * 构造方法
@@ -74,12 +80,16 @@ public class OrderTicketThread extends Thread {
                              Map<String, UrlConfDTO> mapUrlConfDTO,
                              ObjectMapper objectMapper,
                              StationNameService stationNameService,
-                             Map<String, Integer> mapSeatConf) {
+                             Map<String, Integer> mapSeatConf,
+                             Map<Integer, String> mapSeatConf2,
+                             Map<String, String> mapPassengerTicketStr) {
         this.orderTicketDTO = orderTicketDTO;
         this.mapUrlConfDTO = mapUrlConfDTO;
         this.objectMapper = objectMapper;
         this.stationNameService = stationNameService;
         this.mapSeatConf = mapSeatConf;
+        this.mapSeatConf2 = mapSeatConf2;
+        this.mapPassengerTicketStr = mapPassengerTicketStr;
     }
 
     /**
@@ -553,13 +563,119 @@ public class OrderTicketThread extends Thread {
             log.debug("wantNormalPassenger = {}", wantNormalPassenger);
 
             Map<String, Object> leftTicketMap = checkLeftTickets(httpClient, httpClientContext);
+            Map<String, Object> passengerTicketStrListAndOldPassengerStr = getPassengerTicketStr(httpClient, httpClientContext, wantNormalPassenger);
 
+            postParams = new HashMap<>();
+            postParams.put("secretStr", leftTicketMap.get("secretStr").toString());
+            postParams.put("train_date", leftTicketMap.get("train_date").toString());
+            postParams.put("back_train_date", "");
+            postParams.put("tour_flag", "dc");
+            postParams.put("purpose_codes", "ADULT");
+            postParams.put("query_from_station_name", stationNameService.getStationCode(orderTicketDTO.getFromStation()));
+            postParams.put("query_to_station_name", stationNameService.getStationCode(orderTicketDTO.getToStation()));
+            result = doIt(httpClient, httpClientContext, "submit_station_url", postParams);
+            if (getStringJsonValue(result, "data").equalsIgnoreCase("N")) {
+                // 首先获取token
+                result = doIt(httpClient, httpClientContext, "initdc_url", null);
+                Pattern tokenNamePattern = Pattern.compile("var globalRepeatSubmitToken = '(.*)'");
+                Pattern ticketInfoForPassengerFormNamePattern = Pattern.compile("var ticketInfoForPassengerForm=(\\{.+\\})?");
+                Pattern orderRequestParamsNamePattern = Pattern.compile("var orderRequestDTO=(\\{.+\\})?");
+                Matcher tokenNameMatcher = tokenNamePattern.matcher(result);
+                Matcher ticketInfoForPassengerFormNameMatcher = tokenNamePattern.matcher(result);
+                Matcher orderRequestParamsNameMatcher = orderRequestParamsNamePattern.matcher(result);
+                String token = null;
+                JsonNode ticketInfoForPassengerForm = null;
+                JsonNode orderRequestParams = null;
+                if (tokenNameMatcher.find()) {
+                    token = tokenNameMatcher.group(1);
+                }
+                if (ticketInfoForPassengerFormNameMatcher.find()) {
+                    String s = ticketInfoForPassengerFormNameMatcher.group(1);
+                    ticketInfoForPassengerForm = objectMapper.readTree(s);
+                }
+                if (orderRequestParamsNameMatcher.find()) {
+                    String s = orderRequestParamsNameMatcher.group(1);
+                    orderRequestParams = objectMapper.readTree(s);
+                }
+
+                // 说明在排队了
+                postParams = new HashMap<>();
+                postParams.put("passengerTicketStr", passengerTicketStrListAndOldPassengerStr.get("passengerTicketStrList").toString());
+                postParams.put("oldPassengerStr", passengerTicketStrListAndOldPassengerStr.get("oldPassengerStr").toString());
+                postParams.put("REPEAT_SUBMIT_TOKEN", token);
+                postParams.put("randCode", "");
+                postParams.put("cancel_flag", "2");
+                postParams.put("bed_level_order_num", "000000000000000000000000000000");
+                postParams.put("tour_flag", "dc");
+                postParams.put("_json_att", "");
+                result = doIt(httpClient, httpClientContext, "checkOrderInfoUrl", postParams);
+                JsonNode checkOrderInfoRoot = objectMapper.readTree(result);
+                if (checkOrderInfoRoot.get("data").get("submitStatus").booleanValue()) {
+                    log.info("车票提交通过，正在尝试排队");
+                    float ifShowPassCodeTime = Integer.valueOf(checkOrderInfoRoot.get("data").get("ifShowPassCodeTime").textValue()) / 1000.0f;
+                    boolean isNeedCode = false;
+                    if (checkOrderInfoRoot.get("data").get("ifShowPassCode").textValue().equalsIgnoreCase("Y")) {
+                        isNeedCode = true;
+                    }
+
+                    // 那就排队吧
+                    postParams = new HashMap<>();
+
+                }
+            }
 
         } catch (IOException e) {
             log.error("e = {}", e);
         }
     }
 
+    /**
+     * 构造需要购买的票信息
+     * @param httpClient
+     * @param httpClientContext
+     * @param wantNormalPassenger
+     * @return
+     * @throws IOException
+     */
+    private Map<String, Object> getPassengerTicketStr(HttpClient httpClient,
+                                                      HttpClientContext httpClientContext,
+                                                      JsonNode wantNormalPassenger) throws IOException {
+        String seatCode = mapPassengerTicketStr.get(orderTicketDTO.getSeatType());
+        List<String> passengerTicketStrList = new ArrayList<>();
+        passengerTicketStrList.add("0");
+        // TODO 这里的passengerTicketStrList可以扩展成多个人，注意人和人之间用_隔开
+        passengerTicketStrList.add(seatCode);
+        passengerTicketStrList.add(wantNormalPassenger.get("passenger_type").textValue());
+        passengerTicketStrList.add(wantNormalPassenger.get("passenger_name").textValue());
+        passengerTicketStrList.add(wantNormalPassenger.get("passenger_id_type_code").textValue());
+        passengerTicketStrList.add(wantNormalPassenger.get("passenger_id_no").textValue());
+        passengerTicketStrList.add(wantNormalPassenger.get("mobile_no").textValue());
+        passengerTicketStrList.add("N");
+        List<String> oldPassengerStr = new ArrayList<>();
+        // TODO 这里的oldPassengerStr理论上也应该扩展成多人，注意人和人之间用_隔开
+        oldPassengerStr.add(wantNormalPassenger.get("passenger_name").textValue());
+        oldPassengerStr.add(wantNormalPassenger.get("passenger_id_type_code").textValue());
+        oldPassengerStr.add(wantNormalPassenger.get("passenger_id_no").textValue());
+        oldPassengerStr.add(wantNormalPassenger.get("passenger_type").textValue());
+
+        Map<String, Object> mapPassengerTicketStrListAndOldPassengerStr = new HashMap<>();
+        mapPassengerTicketStrListAndOldPassengerStr.put("passengerTicketStrList", String.join(",", passengerTicketStrList));
+        mapPassengerTicketStrListAndOldPassengerStr.put("oldPassengerStr", String.join(",", oldPassengerStr));
+        mapPassengerTicketStrListAndOldPassengerStr.put("code", 000000);
+        mapPassengerTicketStrListAndOldPassengerStr.put("set_type", seatCode);
+        mapPassengerTicketStrListAndOldPassengerStr.put("status", true);
+        // TODO 这里的user_info不知道是不是对的
+        mapPassengerTicketStrListAndOldPassengerStr.put("user_info", wantNormalPassenger.toString());
+        return mapPassengerTicketStrListAndOldPassengerStr;
+    }
+
+    /**
+     * 查询余票
+     * @param httpClient
+     * @param httpClientContext
+     * @return
+     * @throws IOException
+     */
     private Map<String, Object> checkLeftTickets(HttpClient httpClient, HttpClientContext httpClientContext) throws IOException {
         String result;
         String fromStationCode = stationNameService.getStationCode(orderTicketDTO.getFromStation());

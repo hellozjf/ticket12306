@@ -77,6 +77,30 @@ public class BeanConfig {
         return map;
     }
 
+    @Bean("mapPassengerTicketStr")
+    public Map<String, String> mapPassengerTicketStr() {
+        Map<String, String> map = new HashMap<>();
+        map.put("一等座", "M");
+        map.put("特等座", "P");
+        map.put("二等座", "O");
+        map.put("商务座", "9");
+        map.put("硬座", "1");
+        map.put("无座", "1");
+        map.put("软座", "2");
+        map.put("软卧", "4");
+        map.put("硬卧", "3");
+        return map;
+    }
+
+    @Bean("mapSeatConf2")
+    public Map<Integer, String> mapSeatConf2(@Qualifier("mapSeatConf") Map<String, Integer> mapSeatConf) {
+        Map<Integer, String> map = new HashMap<>();
+        for (Map.Entry<String, Integer> entry : mapSeatConf.entrySet()) {
+            map.put(entry.getValue(), entry.getKey());
+        }
+        return map;
+    }
+
     /**
      * urlConf.py文件的内容
      * @param objectMapper
@@ -138,7 +162,9 @@ public class BeanConfig {
     public CommandLineRunner commandLineRunner(@Qualifier("mapUrlConfDTO") Map<String, UrlConfDTO> mapUrlConfDTO,
                                                ObjectMapper objectMapper,
                                                StationNameService stationNameService,
-                                               @Qualifier("mapSeatConf") Map<String, Integer> mapSeatConf) {
+                                               @Qualifier("mapSeatConf") Map<String, Integer> mapSeatConf,
+                                               @Qualifier("mapSeatConf2") Map<Integer, String> mapSeatConf2,
+                                               @Qualifier("mapPassengerTicketStr") Map<String, String> mapPassengerTicketStr) {
         return (args) -> {
             OrderTicketDTO orderTicketDTO = new OrderTicketDTO();
             orderTicketDTO.setStationDate("2019-05-18");
@@ -151,7 +177,7 @@ public class BeanConfig {
             orderTicketDTO.setPassword("Zjf@1234");
             orderTicketDTO.setEmail("908686171@qq.com");
             OrderTicketThread thread = new OrderTicketThread(orderTicketDTO,
-                    mapUrlConfDTO, objectMapper, stationNameService, mapSeatConf);
+                    mapUrlConfDTO, objectMapper, stationNameService, mapSeatConf, mapSeatConf2, mapPassengerTicketStr);
             thread.start();
         };
     }
