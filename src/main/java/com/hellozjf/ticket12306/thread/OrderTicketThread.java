@@ -93,165 +93,6 @@ public class OrderTicketThread extends Thread {
     }
 
     /**
-     * 旧的方法，我再看看网页，打算自己重新写一个
-     * @throws Exception
-     */
-    private void old() throws Exception {
-
-        // 浏览列车列表
-        HttpClient httpClient = HttpClients.createDefault();
-        HttpClientContext httpClientContext = HttpClientContext.create();
-        UrlConfDTO urlConfDTO = mapUrlConfDTO.get("left_ticket_init");
-        HttpPost httpPost = new HttpPost(UrlUtils.getUrl(urlConfDTO.getHttpType(), urlConfDTO.getHost(), urlConfDTO.getReqUrl()));
-        httpPost.addHeader(HttpHeaders.REFERER, urlConfDTO.getReferer());
-        HttpResponse httpResponse = httpClient.execute(httpPost, httpClientContext);
-        CookieStore cookieStore = httpClientContext.getCookieStore();
-        HttpEntity httpEntity = httpResponse.getEntity();
-        String result = EntityUtils.toString(httpEntity);
-
-        // 查看是否已经登录
-        httpPost.reset();
-        urlConfDTO = mapUrlConfDTO.get("loginConf");
-        httpPost = new HttpPost(UrlUtils.getUrl(urlConfDTO.getHttpType(), urlConfDTO.getHost(), urlConfDTO.getReqUrl()));
-        httpPost.addHeader(HttpHeaders.REFERER, urlConfDTO.getReferer());
-        httpResponse = httpClient.execute(httpPost, httpClientContext);
-        cookieStore = httpClientContext.getCookieStore();
-        httpEntity = httpResponse.getEntity();
-        result = EntityUtils.toString(httpEntity);
-        log.debug("result = {}", result);
-        JsonNode jsonNode = objectMapper.readTree(result);
-        log.debug("是否需要登录：{}", jsonNode.get("data").get("is_login_passCode").textValue());
-
-        // 打开登录页面
-        httpPost.reset();
-        urlConfDTO = mapUrlConfDTO.get("loginInitCdn1");
-        httpPost = new HttpPost(UrlUtils.getUrl(urlConfDTO.getHttpType(), urlConfDTO.getHost(), urlConfDTO.getReqUrl()));
-        httpPost.addHeader(HttpHeaders.REFERER, urlConfDTO.getReferer());
-        httpResponse = httpClient.execute(httpPost, httpClientContext);
-        cookieStore = httpClientContext.getCookieStore();
-        httpEntity = httpResponse.getEntity();
-        result = EntityUtils.toString(httpEntity);
-//            log.debug("result = {}", result);
-
-        // 登录接口
-        httpPost.reset();
-        urlConfDTO = mapUrlConfDTO.get("uamtk-static");
-        httpPost = new HttpPost(UrlUtils.getUrl(urlConfDTO.getHttpType(), urlConfDTO.getHost(), urlConfDTO.getReqUrl()));
-        httpPost.addHeader(HttpHeaders.REFERER, urlConfDTO.getReferer());
-        List<NameValuePair> formParams = new ArrayList<>();
-        formParams.add(new BasicNameValuePair("appid", "otn"));
-        UrlEncodedFormEntity requestEntity = new UrlEncodedFormEntity(formParams, Consts.UTF_8);
-        httpPost.setEntity(requestEntity);
-        httpResponse = httpClient.execute(httpPost, httpClientContext);
-        cookieStore = httpClientContext.getCookieStore();
-        httpEntity = httpResponse.getEntity();
-        result = EntityUtils.toString(httpEntity);
-        log.debug("result = {}", result);
-
-        // 获取设备ID并写入cookie中
-        httpPost.reset();
-        urlConfDTO = mapUrlConfDTO.get("getDevicesId");
-        httpPost = new HttpPost(UrlUtils.getUrl(urlConfDTO.getHttpType(), urlConfDTO.getHost(),
-                urlConfDTO.getReqUrl().replaceAll("\\{0\\}", String.valueOf(System.currentTimeMillis()))));
-        httpPost.addHeader(HttpHeaders.REFERER, urlConfDTO.getReferer());
-        httpResponse = httpClient.execute(httpPost, httpClientContext);
-        cookieStore = httpClientContext.getCookieStore();
-        httpEntity = httpResponse.getEntity();
-        result = EntityUtils.toString(httpEntity);
-        log.debug("result = {}", result);
-        Pattern pattern = Pattern.compile("callbackFunction\\('(.*)'\\)");
-        Matcher matcher = pattern.matcher(result);
-        if (matcher.find()) {
-            String deviceInfo = matcher.group(1);
-            log.debug("group = {}", deviceInfo);
-            JsonNode deviceInfoNode = objectMapper.readTree(deviceInfo);
-            String dfp = deviceInfoNode.get("dfp").textValue();
-            log.debug("dfp = {}", dfp);
-            if (dfp != null) {
-                cookieStore.addCookie(new BasicClientCookie("RAIL_DEVICEID", dfp));
-            }
-        }
-
-        // 获取验证图片
-        httpPost.reset();
-        urlConfDTO = mapUrlConfDTO.get("getCodeImg1");
-        httpPost = new HttpPost(UrlUtils.getUrl(urlConfDTO.getHttpType(), urlConfDTO.getHost(),
-                urlConfDTO.getReqUrl().replaceAll("\\{0\\}", String.valueOf(Math.random()))));
-        httpPost.addHeader(HttpHeaders.REFERER, urlConfDTO.getReferer());
-        httpResponse = httpClient.execute(httpPost, httpClientContext);
-        cookieStore = httpClientContext.getCookieStore();
-        httpEntity = httpResponse.getEntity();
-        result = EntityUtils.toString(httpEntity);
-        log.debug("result = {}", result);
-        pattern = Pattern.compile(".*\\((.*)\\)");
-        matcher = pattern.matcher(result);
-        String image = null;
-        if (matcher.find()) {
-            String group = matcher.group(1);
-            log.debug("group = {}", group);
-            JsonNode imageNode = objectMapper.readTree(group);
-            image = imageNode.get("image").textValue();
-            log.debug("image = {}", image);
-        }
-
-        // 获取验证图片的code
-        httpPost.reset();
-        httpPost = new HttpPost("http://aliyun.hellozjf.com:8080/result/base64");formParams = new ArrayList<>();
-        formParams.add(new BasicNameValuePair("base64String", image));
-        requestEntity = new UrlEncodedFormEntity(formParams, Consts.UTF_8);
-        httpPost.setEntity(requestEntity);
-        httpResponse = httpClient.execute(httpPost, httpClientContext);
-        cookieStore = httpClientContext.getCookieStore();
-        httpEntity = httpResponse.getEntity();
-        result = EntityUtils.toString(httpEntity);
-        log.debug("result = {}", result);
-        JsonNode randCodeNode = objectMapper.readTree(result);
-        String randCode = randCodeNode.get("data").textValue();
-        log.debug("randCode = {}", randCode);
-
-        // 验证码校验
-        httpPost.reset();
-        urlConfDTO = mapUrlConfDTO.get("codeCheck1");
-        httpPost = new HttpPost(UrlUtils.getUrl(urlConfDTO.getHttpType(), urlConfDTO.getHost(),
-                urlConfDTO.getReqUrl().replaceAll("\\{1\\}", String.valueOf(System.currentTimeMillis()))
-                        .replaceAll("\\{0\\}", randCode)));
-        httpPost.addHeader(HttpHeaders.REFERER, urlConfDTO.getReferer());
-        httpResponse = httpClient.execute(httpPost, httpClientContext);
-        cookieStore = httpClientContext.getCookieStore();
-        httpEntity = httpResponse.getEntity();
-        result = EntityUtils.toString(httpEntity);
-        log.debug("result = {}", result);
-        pattern = Pattern.compile(".*\\((.*)\\)");
-        matcher = pattern.matcher(result);
-        if (matcher.find()) {
-            String group = matcher.group(1);
-            log.debug("group = {}", group);
-            JsonNode imageNode = objectMapper.readTree(group);
-            String resultCode = imageNode.get("result_code").textValue();
-            log.debug("resultCode = {}", resultCode);
-        }
-
-        // 登录过程
-        httpPost.reset();
-        urlConfDTO = mapUrlConfDTO.get("login");
-        httpPost = new HttpPost(UrlUtils.getUrl(urlConfDTO.getHttpType(), urlConfDTO.getHost(), urlConfDTO.getReqUrl()));
-        httpPost.addHeader(HttpHeaders.REFERER, urlConfDTO.getReferer());
-        formParams = new ArrayList<>();
-        formParams.add(new BasicNameValuePair("username", orderTicketDTO.getUsername()));
-        formParams.add(new BasicNameValuePair("password", orderTicketDTO.getPassword()));
-        formParams.add(new BasicNameValuePair("appid", "otn"));
-        formParams.add(new BasicNameValuePair("answer", randCode));
-        log.debug("formParams = {}", formParams);
-        requestEntity = new UrlEncodedFormEntity(formParams, Consts.UTF_8);
-        httpPost.setEntity(requestEntity);
-        httpResponse = httpClient.execute(httpPost, httpClientContext);
-        cookieStore = httpClientContext.getCookieStore();
-        httpEntity = httpResponse.getEntity();
-        result = EntityUtils.toString(httpEntity);
-        log.debug("result = {}", result);
-    }
-
-    /**
      * 从文本中提取一个正则表达式分组信息
      * @param text
      * @param regex
@@ -313,35 +154,30 @@ public class OrderTicketThread extends Thread {
             reqUrl = reqUrl.replaceAll("\\{" + i + "\\}", params[i]);
         }
 
-        // 构造HttpGet或者HttpPost
-        HttpUriRequest httpUriRequest = null;
+        // 全部使用HttpPost
         HttpResponse httpResponse = null;
-        if (urlConfDTO.getReqType().equalsIgnoreCase(HttpMethod.GET.name())) {
-            HttpGet httpGet = new HttpGet(UrlUtils.getUrl(urlConfDTO.getHttpType(), urlConfDTO.getHost(), reqUrl));
-            httpGet.setHeader(HttpHeaders.REFERER, urlConfDTO.getReferer());
-            httpGet.setHeader(HttpHeaders.HOST, urlConfDTO.getHost());
-            httpUriRequest = httpGet;
-        } else {
-            HttpPost httpPost = new HttpPost(UrlUtils.getUrl(urlConfDTO.getHttpType(), urlConfDTO.getHost(), reqUrl));
-            httpPost.setHeader(HttpHeaders.REFERER, urlConfDTO.getReferer());
-            httpPost.setHeader(HttpHeaders.HOST, urlConfDTO.getHost());
-            if (postParams != null) {
-                List<NameValuePair> formParams = new ArrayList<>();
-                for (Map.Entry<String, String> entry : postParams.entrySet()) {
-                    formParams.add(new BasicNameValuePair(entry.getKey(), entry.getValue()));
-                }
-                UrlEncodedFormEntity requestEntity = new UrlEncodedFormEntity(formParams, Consts.UTF_8);
-                httpPost.setEntity(requestEntity);
+        String urlString = UrlUtils.getUrl(urlConfDTO.getHttpType(), urlConfDTO.getHost(), reqUrl);
+        HttpPost httpPost = new HttpPost(urlString);
+        httpPost.setHeader(HttpHeaders.REFERER, urlConfDTO.getReferer());
+        httpPost.setHeader(HttpHeaders.HOST, urlConfDTO.getHost());
+        if (postParams != null) {
+            List<NameValuePair> formParams = new ArrayList<>();
+            for (Map.Entry<String, String> entry : postParams.entrySet()) {
+                formParams.add(new BasicNameValuePair(entry.getKey(), entry.getValue()));
             }
-            httpUriRequest = httpPost;
+            UrlEncodedFormEntity requestEntity = new UrlEncodedFormEntity(formParams, Consts.UTF_8);
+            httpPost.setEntity(requestEntity);
         }
 
         // 如果没有得到值，则一直重试，重试到有值，或者超过最大次数为止
         for (int i = 0; i < urlConfDTO.getReTry(); i++) {
-            httpResponse = httpClient.execute(httpUriRequest, httpClientContext);
+            httpResponse = httpClient.execute(httpPost, httpClientContext);
             HttpEntity httpEntity = httpResponse.getEntity();
             String result = EntityUtils.toString(httpEntity);
             if (!StringUtils.isEmpty(result)) {
+                log.info("url: {}", urlString);
+                log.info("input: {}", httpPost.getEntity() == null ? null : EntityUtils.toString(httpPost.getEntity()));
+                log.info("output: {}", result);
                 return result;
             }
             try {
@@ -366,6 +202,18 @@ public class OrderTicketThread extends Thread {
     private String getStringJsonValue(String json, String key) throws IOException {
         JsonNode jsonNode = objectMapper.readTree(json);
         return jsonNode.get(key).textValue();
+    }
+
+    /**
+     * 判断json串中有没有某个key
+     * @param json
+     * @param key
+     * @return
+     * @throws IOException
+     */
+    private boolean haveJsonValue(String json, String key) throws IOException {
+        JsonNode jsonNode = objectMapper.readTree(json);
+        return jsonNode.get(key) != null;
     }
 
     /**
@@ -514,119 +362,175 @@ public class OrderTicketThread extends Thread {
     @Override
     public void run() {
         try {
+            // 定义需要用到的公共变量
+            // cookie持久化
             FileCookieStore fileCookieStore = new FileCookieStore(new File("hellozjf"));
+            // httpClient
             HttpClient httpClient = HttpClients.custom()
                     .setDefaultCookieStore(fileCookieStore)
                     .build();
+            // httpClientContext
             HttpClientContext httpClientContext = HttpClientContext.create();
-
+            // post的参数
             Map<String, String> postParams = null;
+            // 返回结果
             String result = null;
+            // 返回代码
             Integer resultCode = null;
 
-            // 访问/otn/leftTicket/init
+            // 访问/otn/leftTicket/init，todo 不知道有什么用处，以后删了它试试
             doIt(httpClient, httpClientContext, "left_ticket_init", null);
 
-            // 进行登录操作
+            // 进行登录操作，如果没有登录过这里可能要花很长时间才能登录成功
+            // 如果登陆过且保存的cookie没有过期应该直接就能获取到result的，result本质上就是后面用到的tk
             result = login(httpClient, httpClientContext);
             log.debug("result = {}", result);
 
             // 登录成功后，显示用户名
-            postParams = new HashMap<>();
-            postParams.put("tk", result);
-            result = doIt(httpClient, httpClientContext, "uamauthclient", postParams);
-            resultCode = getIntegerJsonValue(result, "result_code");
-            if (resultCode.intValue() == 0) {
-                log.info("欢迎 {} 登录", getStringJsonValue(result, "username"));
-            }
+            result = showUserName(httpClient, httpClientContext, result);
 
             // todo 记住，这里可能要新开一个checkUser线程
 
             // 获取乘客列表
-            postParams = new HashMap<>();
-            postParams.put("tk", result);
-            result = doIt(httpClient, httpClientContext, "get_passengerDTOs", postParams);
-            log.debug("result = {}", result);
-            JsonNode root = objectMapper.readTree(result);
-            JsonNode data = root.get("data");
-            JsonNode normalPassengers = data.get("normal_passengers");
-            JsonNode wantNormalPassenger = null;
-            if (normalPassengers.isArray()) {
-                ArrayNode array = (ArrayNode) normalPassengers;
-                for (JsonNode normalPassenger : array) {
-                    if (normalPassenger.get("passenger_name").textValue().equals(orderTicketDTO.getTicketPeople())) {
-                        wantNormalPassenger = normalPassenger;
-                        break;
-                    }
-                }
-            }
-            log.debug("wantNormalPassenger = {}", wantNormalPassenger);
+            JsonNode wantNormalPassenger = getPassengerList(httpClient, httpClientContext);
 
-            Map<String, Object> leftTicketMap = checkLeftTickets(httpClient, httpClientContext);
-            Map<String, Object> passengerTicketStrListAndOldPassengerStr = getPassengerTicketStr(httpClient, httpClientContext, wantNormalPassenger);
-
-            postParams = new HashMap<>();
-            postParams.put("secretStr", leftTicketMap.get("secretStr").toString());
-            postParams.put("train_date", leftTicketMap.get("train_date").toString());
-            postParams.put("back_train_date", "");
-            postParams.put("tour_flag", "dc");
-            postParams.put("purpose_codes", "ADULT");
-            postParams.put("query_from_station_name", stationNameService.getStationCode(orderTicketDTO.getFromStation()));
-            postParams.put("query_to_station_name", stationNameService.getStationCode(orderTicketDTO.getToStation()));
-            result = doIt(httpClient, httpClientContext, "submit_station_url", postParams);
-            if (getStringJsonValue(result, "data").equalsIgnoreCase("N")) {
-                // 首先获取token
-                result = doIt(httpClient, httpClientContext, "initdc_url", null);
-                Pattern tokenNamePattern = Pattern.compile("var globalRepeatSubmitToken = '(.*)'");
-                Pattern ticketInfoForPassengerFormNamePattern = Pattern.compile("var ticketInfoForPassengerForm=(\\{.+\\})?");
-                Pattern orderRequestParamsNamePattern = Pattern.compile("var orderRequestDTO=(\\{.+\\})?");
-                Matcher tokenNameMatcher = tokenNamePattern.matcher(result);
-                Matcher ticketInfoForPassengerFormNameMatcher = tokenNamePattern.matcher(result);
-                Matcher orderRequestParamsNameMatcher = orderRequestParamsNamePattern.matcher(result);
-                String token = null;
-                JsonNode ticketInfoForPassengerForm = null;
-                JsonNode orderRequestParams = null;
-                if (tokenNameMatcher.find()) {
-                    token = tokenNameMatcher.group(1);
-                }
-                if (ticketInfoForPassengerFormNameMatcher.find()) {
-                    String s = ticketInfoForPassengerFormNameMatcher.group(1);
-                    ticketInfoForPassengerForm = objectMapper.readTree(s);
-                }
-                if (orderRequestParamsNameMatcher.find()) {
-                    String s = orderRequestParamsNameMatcher.group(1);
-                    orderRequestParams = objectMapper.readTree(s);
-                }
-
-                // 说明在排队了
-                postParams = new HashMap<>();
-                postParams.put("passengerTicketStr", passengerTicketStrListAndOldPassengerStr.get("passengerTicketStrList").toString());
-                postParams.put("oldPassengerStr", passengerTicketStrListAndOldPassengerStr.get("oldPassengerStr").toString());
-                postParams.put("REPEAT_SUBMIT_TOKEN", token);
-                postParams.put("randCode", "");
-                postParams.put("cancel_flag", "2");
-                postParams.put("bed_level_order_num", "000000000000000000000000000000");
-                postParams.put("tour_flag", "dc");
-                postParams.put("_json_att", "");
-                result = doIt(httpClient, httpClientContext, "checkOrderInfoUrl", postParams);
-                JsonNode checkOrderInfoRoot = objectMapper.readTree(result);
-                if (checkOrderInfoRoot.get("data").get("submitStatus").booleanValue()) {
-                    log.info("车票提交通过，正在尝试排队");
-                    float ifShowPassCodeTime = Integer.valueOf(checkOrderInfoRoot.get("data").get("ifShowPassCodeTime").textValue()) / 1000.0f;
-                    boolean isNeedCode = false;
-                    if (checkOrderInfoRoot.get("data").get("ifShowPassCode").textValue().equalsIgnoreCase("Y")) {
-                        isNeedCode = true;
-                    }
-
-                    // 那就排队吧
-                    postParams = new HashMap<>();
-
-                }
-            }
+            // 抢票
+            orderTicket(httpClient, httpClientContext, wantNormalPassenger);
 
         } catch (IOException e) {
             log.error("e = {}", e);
         }
+    }
+
+    /**
+     * 开始抢票
+     * @param httpClient
+     * @param httpClientContext
+     * @param wantNormalPassenger
+     * @throws IOException
+     */
+    private void orderTicket(HttpClient httpClient, HttpClientContext httpClientContext, JsonNode wantNormalPassenger) throws IOException {
+
+        while (true) {
+            Map<String, Object> leftTicketMap = checkLeftTickets(httpClient, httpClientContext);
+            Map<String, Object> passengerTicketStrListAndOldPassengerStr = getPassengerTicketStr(httpClient, httpClientContext, wantNormalPassenger);
+            // 提交订单
+            submitOrder(httpClient, httpClientContext, leftTicketMap, passengerTicketStrListAndOldPassengerStr);
+        }
+    }
+
+    private void submitOrder(HttpClient httpClient, HttpClientContext httpClientContext, Map<String, Object> leftTicketMap, Map<String, Object> passengerTicketStrListAndOldPassengerStr) throws IOException {
+        Map<String, String> postParams;
+        String result;
+        postParams = new HashMap<>();
+        postParams.put("secretStr", leftTicketMap.get("secretStr").toString());
+        postParams.put("train_date", leftTicketMap.get("train_date").toString());
+        postParams.put("back_train_date", "");
+        postParams.put("tour_flag", "dc");
+        postParams.put("purpose_codes", "ADULT");
+        postParams.put("query_from_station_name", stationNameService.getStationCode(orderTicketDTO.getFromStation()));
+        postParams.put("query_to_station_name", stationNameService.getStationCode(orderTicketDTO.getToStation()));
+        result = doIt(httpClient, httpClientContext, "submit_station_url", postParams);
+        if (haveJsonValue(result, "data") && getStringJsonValue(result, "data").equalsIgnoreCase("N")) {
+            // 首先获取token
+            result = doIt(httpClient, httpClientContext, "initdc_url", null);
+            Pattern tokenNamePattern = Pattern.compile("var globalRepeatSubmitToken = '(.*)'");
+            Pattern ticketInfoForPassengerFormNamePattern = Pattern.compile("var ticketInfoForPassengerForm=(\\{.+\\})?");
+            Pattern orderRequestParamsNamePattern = Pattern.compile("var orderRequestDTO=(\\{.+\\})?");
+            Matcher tokenNameMatcher = tokenNamePattern.matcher(result);
+            Matcher ticketInfoForPassengerFormNameMatcher = tokenNamePattern.matcher(result);
+            Matcher orderRequestParamsNameMatcher = orderRequestParamsNamePattern.matcher(result);
+            String token = null;
+            JsonNode ticketInfoForPassengerForm = null;
+            JsonNode orderRequestParams = null;
+            if (tokenNameMatcher.find()) {
+                token = tokenNameMatcher.group(1);
+            }
+            if (ticketInfoForPassengerFormNameMatcher.find()) {
+                String s = ticketInfoForPassengerFormNameMatcher.group(1);
+                ticketInfoForPassengerForm = objectMapper.readTree(s);
+            }
+            if (orderRequestParamsNameMatcher.find()) {
+                String s = orderRequestParamsNameMatcher.group(1);
+                orderRequestParams = objectMapper.readTree(s);
+            }
+
+            // 说明在排队了
+            postParams = new HashMap<>();
+            postParams.put("passengerTicketStr", passengerTicketStrListAndOldPassengerStr.get("passengerTicketStrList").toString());
+            postParams.put("oldPassengerStr", passengerTicketStrListAndOldPassengerStr.get("oldPassengerStr").toString());
+            postParams.put("REPEAT_SUBMIT_TOKEN", token);
+            postParams.put("randCode", "");
+            postParams.put("cancel_flag", "2");
+            postParams.put("bed_level_order_num", "000000000000000000000000000000");
+            postParams.put("tour_flag", "dc");
+            postParams.put("_json_att", "");
+            result = doIt(httpClient, httpClientContext, "checkOrderInfoUrl", postParams);
+            JsonNode checkOrderInfoRoot = objectMapper.readTree(result);
+            if (checkOrderInfoRoot.get("data").get("submitStatus").booleanValue()) {
+                log.info("车票提交通过，正在尝试排队");
+                float ifShowPassCodeTime = Integer.valueOf(checkOrderInfoRoot.get("data").get("ifShowPassCodeTime").textValue()) / 1000.0f;
+                boolean isNeedCode = false;
+                if (checkOrderInfoRoot.get("data").get("ifShowPassCode").textValue().equalsIgnoreCase("Y")) {
+                    isNeedCode = true;
+                }
+
+                // 那就排队吧
+                postParams = new HashMap<>();
+            }
+        } else {
+            JsonNode jsonNode = objectMapper.readTree(result);
+            JsonNode messages = jsonNode.get("messages");
+            if (messages != null && messages.isArray()) {
+                ArrayNode arrayNode = (ArrayNode) messages;
+                log.debug("{}", arrayNode.get(0).textValue());
+            }
+        }
+    }
+
+    private JsonNode getPassengerList(HttpClient httpClient, HttpClientContext httpClientContext) throws IOException {
+        Map<String, String> postParams;
+        String result;
+        postParams = new HashMap<>();
+        postParams.put("_json_att", "");
+        result = doIt(httpClient, httpClientContext, "get_passengerDTOs", postParams);
+        log.debug("result = {}", result);
+        JsonNode root = objectMapper.readTree(result);
+        JsonNode data = root.get("data");
+        JsonNode normalPassengers = data.get("normal_passengers");
+        JsonNode wantNormalPassenger = null;
+        if (normalPassengers.isArray()) {
+            ArrayNode array = (ArrayNode) normalPassengers;
+            for (JsonNode normalPassenger : array) {
+                if (normalPassenger.get("passenger_name").textValue().equals(orderTicketDTO.getTicketPeople())) {
+                    wantNormalPassenger = normalPassenger;
+                    break;
+                }
+            }
+        }
+        log.debug("wantNormalPassenger = {}", wantNormalPassenger);
+        return wantNormalPassenger;
+    }
+
+    /**
+     * 显示登录的用户名
+     * @param httpClient
+     * @param httpClientContext
+     * @param result
+     * @return
+     * @throws IOException
+     */
+    private String showUserName(HttpClient httpClient, HttpClientContext httpClientContext, String result) throws IOException {
+        Map<String, String> postParams;
+        Integer resultCode;
+        postParams = new HashMap<>();
+        postParams.put("tk", result);
+        result = doIt(httpClient, httpClientContext, "uamauthclient", postParams);
+        resultCode = getIntegerJsonValue(result, "result_code");
+        if (resultCode.intValue() == 0) {
+            log.info("欢迎 {} 登录", getStringJsonValue(result, "username"));
+        }
+        return result;
     }
 
     /**
