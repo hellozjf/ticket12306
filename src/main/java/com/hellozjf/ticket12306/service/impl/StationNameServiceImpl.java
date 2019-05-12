@@ -31,18 +31,23 @@ public class StationNameServiceImpl implements StationNameService {
                 BufferedReader bufferedReader = new BufferedReader(inputStreamReader)
         ) {
             String line = bufferedReader.readLine();
-            Pattern pattern = Pattern.compile("var station_names ='(.*)';");
-            Matcher matcher = pattern.matcher(line);
-            if (matcher.find()) {
-                String[] infos = matcher.group(1).split("@");
-                for (int i = 1; i < infos.length; i++) {
-                    String info = infos[i];
-                    String[] rs = info.split("\\|");
-                    nameCodeMap.put(rs[1], rs[2]);
-                }
-            }
+            updateStationName(line);
         } catch (Exception e) {
             log.error("e = {}", e);
+        }
+    }
+
+    @Override
+    public void updateStationName(String line) {
+        Pattern pattern = Pattern.compile("var station_names ='(.*)';");
+        Matcher matcher = pattern.matcher(line);
+        if (matcher.find()) {
+            String[] infos = matcher.group(1).split("@");
+            for (int i = 1; i < infos.length; i++) {
+                String info = infos[i];
+                String[] rs = info.split("\\|");
+                nameCodeMap.put(rs[1], rs[2]);
+            }
         }
     }
 

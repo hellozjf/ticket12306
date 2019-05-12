@@ -9,8 +9,6 @@ import com.hellozjf.ticket12306.dto.UrlConfDTO;
 import com.hellozjf.ticket12306.service.StationNameService;
 import com.hellozjf.ticket12306.thread.OrderTicketThread;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.http.client.HttpClient;
-import org.apache.http.impl.client.HttpClients;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Bean;
@@ -68,12 +66,14 @@ public class BeanConfig {
         map.put("一等座", 31);
         map.put("二等座", 30);
         map.put("特等座", 25);
+        map.put("高级软卧", 21);
         map.put("软卧", 23);
+        map.put("动卧", 33);
         map.put("硬卧", 28);
         map.put("软座", 24);
         map.put("硬座", 29);
         map.put("无座", 26);
-        map.put("动卧", 33);
+        map.put("其他", 22);
         return map;
     }
 
@@ -135,10 +135,8 @@ public class BeanConfig {
             jsonString = jsonString.replaceAll(",\\s*}", "}");
             // 替换掉{}为{0}
             jsonString = jsonString.replaceAll("\\{\\}", "{0}");
-            log.debug("jsonString = {}", jsonString);
             // 将字符串转json对象
             JsonNode urls = objectMapper.readTree(jsonString);
-            log.debug("urls = {}", urls);
             for (Iterator<String> iter = urls.fieldNames(); iter.hasNext(); ) {
                 String fieldName = iter.next();
                 JsonNode jsonNode = urls.get(fieldName);
@@ -150,12 +148,6 @@ public class BeanConfig {
             log.error("e = {}", e);
         }
         return mapUrlConfDTO;
-    }
-
-    @Bean
-    public HttpClient httpClient() {
-        HttpClient httpClient = HttpClients.createDefault();
-        return httpClient;
     }
 
     @Bean
@@ -178,7 +170,6 @@ public class BeanConfig {
             orderTicketDTO.setEmail("908686171@qq.com");
             OrderTicketThread thread = new OrderTicketThread(orderTicketDTO,
                     mapUrlConfDTO, objectMapper, stationNameService, mapSeatConf, mapSeatConf2, mapPassengerTicketStr);
-            thread.start();
         };
     }
 }

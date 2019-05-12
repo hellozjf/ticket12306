@@ -131,6 +131,47 @@ public class FileCookieStore implements CookieStore, Serializable {
     }
 
     /**
+     * 获取特定名称的Cookie
+     *
+     * @param name
+     * @return
+     */
+    public Cookie getCookie(String name) {
+        lock.readLock().lock();
+        try {
+            for (Cookie cookie : cookies) {
+                if (cookie.getName().equalsIgnoreCase(name)) {
+                    return cookie;
+                }
+            }
+            return null;
+        } finally {
+            lock.readLock().unlock();
+        }
+    }
+
+    /**
+     * 移除给定名字的cookie
+     * @param name
+     * @return
+     */
+    public Cookie delCookie(String name) {
+        lock.writeLock().lock();
+        try {
+            for (Iterator<Cookie> iterator = cookies.iterator(); iterator.hasNext();) {
+                Cookie cookie = iterator.next();
+                if (cookie.getName().equalsIgnoreCase(name)) {
+                    iterator.remove();
+                    return cookie;
+                }
+            }
+            return null;
+        } finally {
+            lock.writeLock().unlock();
+        }
+    }
+
+    /**
      * Removes all of {@link Cookie cookies} in this HTTP state
      * that have expired by the specified {@link java.util.Date date}.
      *
