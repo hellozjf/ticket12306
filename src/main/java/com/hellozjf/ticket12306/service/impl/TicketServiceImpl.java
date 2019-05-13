@@ -661,6 +661,12 @@ public class TicketServiceImpl implements TicketService {
                     } catch (InterruptedException e) {
                         log.error("e = {}", e);
                     }
+                } else if (waitTime == -2) {
+                    // 失败，打印错误信息，并抛出异常
+                    String errorMsg = data.get("msg").textValue();
+                    log.error("error = {}", errorMsg);
+                    throw new Ticket12306Exception(ResultEnum.OTN_CONFIRM_PASSENGER_QUERY_ORDER_WAIT_TIME_ERROR.getCode(),
+                            ResultEnum.OTN_CONFIRM_PASSENGER_QUERY_ORDER_WAIT_TIME_ERROR.getMessage() + ":" + errorMsg);
                 }
             } else {
                 // 失败，打印错误信息，并抛出异常

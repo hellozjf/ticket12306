@@ -2,10 +2,8 @@ package com.hellozjf.ticket12306;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
-import com.hellozjf.ticket12306.dto.OrderTicketDTO;
 import com.hellozjf.ticket12306.dto.TicketConfigDTO;
 import com.hellozjf.ticket12306.dto.UrlConfDTO;
-import com.hellozjf.ticket12306.thread.OrderTicketThread;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -14,7 +12,6 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.core.io.Resource;
-import org.springframework.data.jpa.repository.Query;
 import org.springframework.test.context.junit4.SpringRunner;
 import org.yaml.snakeyaml.Yaml;
 

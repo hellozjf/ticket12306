@@ -8,9 +8,8 @@ import com.hellozjf.ticket12306.dto.OrderTicketDTO;
 import com.hellozjf.ticket12306.dto.PersonalInfoDTO;
 import com.hellozjf.ticket12306.dto.TicketConfigDTO;
 import com.hellozjf.ticket12306.dto.UrlConfDTO;
-import com.hellozjf.ticket12306.service.StationNameService;
 import com.hellozjf.ticket12306.service.TicketService;
-import com.hellozjf.ticket12306.thread.OrderTicketThread;
+import com.hellozjf.ticket12306.thread.OrderTicketRunable;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpClient;
 import org.apache.http.client.protocol.HttpClientContext;
@@ -156,21 +155,6 @@ public class BeanConfig {
     @Bean
     public CommandLineRunner commandLineRunner(TicketService ticketService) {
         return (args) -> {
-
-            // 建立cookie文件夹
-            File folder = new File("cookie");
-            if (! folder.exists()) {
-                folder.mkdir();
-            }
-
-            // 在该文件夹下面创建cookie持久化文件
-            FileCookieStore fileCookieStore = new FileCookieStore(new File(folder, "15158037019"));
-            HttpClient httpClient = HttpClients.custom()
-                    .setDefaultCookieStore(fileCookieStore)
-                    .build();
-            HttpClientContext httpClientContext = HttpClientContext.create();
-
-            // 购票信息
             OrderTicketDTO orderTicketDTO = new OrderTicketDTO();
             orderTicketDTO.setStationDate("2019-05-18");
             orderTicketDTO.setStationTrain("G7535");
@@ -182,15 +166,8 @@ public class BeanConfig {
             orderTicketDTO.setPassword("Zjf@1234");
             orderTicketDTO.setEmail("908686171@qq.com");
 
-            // 组成个人信息
-            PersonalInfoDTO personalInfoDTO = new PersonalInfoDTO();
-            personalInfoDTO.setHttpClient(httpClient);
-            personalInfoDTO.setHttpClientContext(httpClientContext);
-            personalInfoDTO.setFileCookieStore(fileCookieStore);
-            personalInfoDTO.setOrderTicketDTO(orderTicketDTO);
-
-            // 查票
-//            ticketService.otnLeftTicketQuery(personalInfoDTO);
+            Runnable runnable = new OrderTicketRunable(orderTicketDTO, ticketService);
+            new Thread(runnable).start();
         };
     }
 }
