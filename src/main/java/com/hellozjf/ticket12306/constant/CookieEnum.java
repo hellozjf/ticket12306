@@ -22,6 +22,7 @@ public enum CookieEnum {
     GLOBAL_REPEAT_SUBMIT_TOKEN_COOKIE("cookie_globalRepeatSubmitTokenCookie", "后续购票需要用到的token"),
     TICKET_INFO_FOR_PASSENGER_FORM("cookie_ticketInfoForPassengerForm", "票相关的所有信息"),
     TICKET_PEOPLE("cookie_ticketPeople", "乘坐人信息"),
+    IS_LOGIN("cookie_is_login", "是否登录"),
     ;
 
     String key;

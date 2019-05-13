@@ -3,12 +3,18 @@ package com.hellozjf.ticket12306.config;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
+import com.hellozjf.ticket12306.custom.FileCookieStore;
 import com.hellozjf.ticket12306.dto.OrderTicketDTO;
+import com.hellozjf.ticket12306.dto.PersonalInfoDTO;
 import com.hellozjf.ticket12306.dto.TicketConfigDTO;
 import com.hellozjf.ticket12306.dto.UrlConfDTO;
 import com.hellozjf.ticket12306.service.StationNameService;
+import com.hellozjf.ticket12306.service.TicketService;
 import com.hellozjf.ticket12306.thread.OrderTicketThread;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.http.client.HttpClient;
+import org.apache.http.client.protocol.HttpClientContext;
+import org.apache.http.impl.client.HttpClients;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Bean;
@@ -16,10 +22,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.core.io.Resource;
 
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
+import java.io.*;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
@@ -151,13 +154,23 @@ public class BeanConfig {
     }
 
     @Bean
-    public CommandLineRunner commandLineRunner(@Qualifier("mapUrlConfDTO") Map<String, UrlConfDTO> mapUrlConfDTO,
-                                               ObjectMapper objectMapper,
-                                               StationNameService stationNameService,
-                                               @Qualifier("mapSeatConf") Map<String, Integer> mapSeatConf,
-                                               @Qualifier("mapSeatConf2") Map<Integer, String> mapSeatConf2,
-                                               @Qualifier("mapPassengerTicketStr") Map<String, String> mapPassengerTicketStr) {
+    public CommandLineRunner commandLineRunner(TicketService ticketService) {
         return (args) -> {
+
+            // 建立cookie文件夹
+            File folder = new File("cookie");
+            if (! folder.exists()) {
+                folder.mkdir();
+            }
+
+            // 在该文件夹下面创建cookie持久化文件
+            FileCookieStore fileCookieStore = new FileCookieStore(new File(folder, "15158037019"));
+            HttpClient httpClient = HttpClients.custom()
+                    .setDefaultCookieStore(fileCookieStore)
+                    .build();
+            HttpClientContext httpClientContext = HttpClientContext.create();
+
+            // 购票信息
             OrderTicketDTO orderTicketDTO = new OrderTicketDTO();
             orderTicketDTO.setStationDate("2019-05-18");
             orderTicketDTO.setStationTrain("G7535");
@@ -168,8 +181,16 @@ public class BeanConfig {
             orderTicketDTO.setUsername("15158037019");
             orderTicketDTO.setPassword("Zjf@1234");
             orderTicketDTO.setEmail("908686171@qq.com");
-            OrderTicketThread thread = new OrderTicketThread(orderTicketDTO,
-                    mapUrlConfDTO, objectMapper, stationNameService, mapSeatConf, mapSeatConf2, mapPassengerTicketStr);
+
+            // 组成个人信息
+            PersonalInfoDTO personalInfoDTO = new PersonalInfoDTO();
+            personalInfoDTO.setHttpClient(httpClient);
+            personalInfoDTO.setHttpClientContext(httpClientContext);
+            personalInfoDTO.setFileCookieStore(fileCookieStore);
+            personalInfoDTO.setOrderTicketDTO(orderTicketDTO);
+
+            // 查票
+//            ticketService.otnLeftTicketQuery(personalInfoDTO);
         };
     }
 }

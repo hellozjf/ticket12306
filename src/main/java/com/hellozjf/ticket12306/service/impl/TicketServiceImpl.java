@@ -1,4 +1,4 @@
-package com.hellozjf.ticket12306;
+package com.hellozjf.ticket12306.service.impl;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -9,6 +9,7 @@ import com.hellozjf.ticket12306.custom.FileCookieStore;
 import com.hellozjf.ticket12306.dto.*;
 import com.hellozjf.ticket12306.exception.Ticket12306Exception;
 import com.hellozjf.ticket12306.service.StationNameService;
+import com.hellozjf.ticket12306.service.TicketService;
 import com.hellozjf.ticket12306.util.RegexUtils;
 import com.hellozjf.ticket12306.util.SendUtils;
 import lombok.extern.slf4j.Slf4j;
@@ -16,18 +17,12 @@ import org.apache.http.client.HttpClient;
 import org.apache.http.client.protocol.HttpClientContext;
 import org.apache.http.client.utils.DateUtils;
 import org.apache.http.cookie.Cookie;
-import org.apache.http.impl.client.HttpClients;
 import org.apache.http.impl.cookie.BasicClientCookie;
-import org.junit.Before;
-import org.junit.Test;
-import org.junit.runner.RunWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.test.context.junit4.SpringRunner;
+import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
-import java.io.File;
 import java.io.IOException;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
@@ -38,22 +33,11 @@ import java.util.*;
 import java.util.concurrent.TimeUnit;
 
 /**
- * 参考
- * https://www.jianshu.com/p/ca93eba60609
- * https://www.jianshu.com/p/89f6170991c8
- * https://www.jianshu.com/p/6b1f94e32713
- *
- * @author hellozjf
+ * @author Jingfeng Zhou
  */
-@RunWith(SpringRunner.class)
-@SpringBootTest
+@Service
 @Slf4j
-public class Test12306 {
-
-    private FileCookieStore fileCookieStore;
-    private HttpClient httpClient;
-    private HttpClientContext httpClientContext;
-    private OrderTicketDTO orderTicketDTO;
+public class TicketServiceImpl implements TicketService {
 
     @Autowired
     @Qualifier("mapUrlConfDTO")
@@ -69,41 +53,14 @@ public class Test12306 {
     @Autowired
     private StationNameService stationNameService;
 
-    @Before
-    public void before() {
-        // 建立cookie文件夹
-        File folder = new File("cookie");
-        if (! folder.exists()) {
-            folder.mkdir();
-        }
+    @Override
+    public void passportCaptchaCaptchaImage64(PersonalInfoDTO personalInfoDTO) throws IOException {
 
-        // 在该文件夹下面创建cookie持久化文件
-        fileCookieStore = new FileCookieStore(new File(folder, "15158037019"));
-        httpClient = HttpClients.custom()
-                .setDefaultCookieStore(fileCookieStore)
-                .build();
-        httpClientContext = HttpClientContext.create();
-
-        // 车票信息
-        orderTicketDTO = new OrderTicketDTO();
-        orderTicketDTO.setStationDate("2019-05-18");
-        orderTicketDTO.setStationTrain("G7535");
-        orderTicketDTO.setFromStation("杭州");
-        orderTicketDTO.setToStation("宁波");
-        orderTicketDTO.setSeatType("二等座");
-        orderTicketDTO.setTicketPeople("周靖峰");
-        orderTicketDTO.setUsername("15158037019");
-        orderTicketDTO.setPassword("Zjf@1234");
-        orderTicketDTO.setEmail("908686171@qq.com");
-    }
-
-    /**
-     * 获取登录所需要的验证码图片
-     *
-     * @throws IOException
-     */
-    @Test
-    public void passportCaptchaCaptchaImage64() throws IOException {
+        // 从personalInfoDTO中还原私人信息
+        HttpClient httpClient = personalInfoDTO.getHttpClient();
+        HttpClientContext httpClientContext = personalInfoDTO.getHttpClientContext();
+        FileCookieStore fileCookieStore = personalInfoDTO.getFileCookieStore();
+        OrderTicketDTO orderTicketDTO = personalInfoDTO.getOrderTicketDTO();
 
         // 访问/passport/captcha/captcha-image64，获取结果
         String result = SendUtils.sendUrl(httpClient, httpClientContext, mapUrlConfDTO, "getCodeImg1", null, String.valueOf(System.currentTimeMillis()));
@@ -126,12 +83,14 @@ public class Test12306 {
         }
     }
 
-    /**
-     * 获取验证码图片的答案
-     * @throws IOException
-     */
-    @Test
-    public void getAnswer() throws IOException {
+    @Override
+    public void getAnswer(PersonalInfoDTO personalInfoDTO) throws IOException {
+
+        // 从personalInfoDTO中还原私人信息
+        HttpClient httpClient = personalInfoDTO.getHttpClient();
+        HttpClientContext httpClientContext = personalInfoDTO.getHttpClientContext();
+        FileCookieStore fileCookieStore = personalInfoDTO.getFileCookieStore();
+        OrderTicketDTO orderTicketDTO = personalInfoDTO.getOrderTicketDTO();
 
         // 获取cookie中保存的验证码图片
         Cookie image = fileCookieStore.getCookie(CookieEnum.IMAGE.getKey());
@@ -156,12 +115,14 @@ public class Test12306 {
         }
     }
 
-    /**
-     * 验证答案是否正确
-     * @throws IOException
-     */
-    @Test
-    public void passportCaptchaCaptchaCheck() throws IOException {
+    @Override
+    public void passportCaptchaCaptchaCheck(PersonalInfoDTO personalInfoDTO) throws IOException {
+
+        // 从personalInfoDTO中还原私人信息
+        HttpClient httpClient = personalInfoDTO.getHttpClient();
+        HttpClientContext httpClientContext = personalInfoDTO.getHttpClientContext();
+        FileCookieStore fileCookieStore = personalInfoDTO.getFileCookieStore();
+        OrderTicketDTO orderTicketDTO = personalInfoDTO.getOrderTicketDTO();
 
         // 获取cookie中保存的答案
         Cookie answer = fileCookieStore.getCookie(CookieEnum.ANSWER.getKey());
@@ -188,12 +149,14 @@ public class Test12306 {
         }
     }
 
-    /**
-     * 使用用户名密码登录
-     * @throws IOException
-     */
-    @Test
-    public void passportWebLogin() throws IOException {
+    @Override
+    public void passportWebLogin(PersonalInfoDTO personalInfoDTO) throws IOException {
+
+        // 从personalInfoDTO中还原私人信息
+        HttpClient httpClient = personalInfoDTO.getHttpClient();
+        HttpClientContext httpClientContext = personalInfoDTO.getHttpClientContext();
+        FileCookieStore fileCookieStore = personalInfoDTO.getFileCookieStore();
+        OrderTicketDTO orderTicketDTO = personalInfoDTO.getOrderTicketDTO();
 
         // 访问/passport/web/login，获取结果
         Map<String, String> postParams = new HashMap<>();
@@ -231,12 +194,14 @@ public class Test12306 {
         }
     }
 
-    /**
-     * 通过登录返回的umatk获取newapptk
-     * @throws IOException
-     */
-    @Test
-    public void passportWebAuthUamtk() throws IOException {
+    @Override
+    public void passportWebAuthUamtk(PersonalInfoDTO personalInfoDTO) throws IOException {
+
+        // 从personalInfoDTO中还原私人信息
+        HttpClient httpClient = personalInfoDTO.getHttpClient();
+        HttpClientContext httpClientContext = personalInfoDTO.getHttpClientContext();
+        FileCookieStore fileCookieStore = personalInfoDTO.getFileCookieStore();
+        OrderTicketDTO orderTicketDTO = personalInfoDTO.getOrderTicketDTO();
 
         // 访问/passport/web/auth/uamtk，获取结果
         Map<String, String> postParams = new HashMap<>();
@@ -259,12 +224,14 @@ public class Test12306 {
         }
     }
 
-    /**
-     * 通过newapptk获取账号对应的姓名
-     * @throws IOException
-     */
-    @Test
-    public void otnUamauthclient() throws IOException {
+    @Override
+    public void otnUamauthclient(PersonalInfoDTO personalInfoDTO) throws IOException {
+
+        // 从personalInfoDTO中还原私人信息
+        HttpClient httpClient = personalInfoDTO.getHttpClient();
+        HttpClientContext httpClientContext = personalInfoDTO.getHttpClientContext();
+        FileCookieStore fileCookieStore = personalInfoDTO.getFileCookieStore();
+        OrderTicketDTO orderTicketDTO = personalInfoDTO.getOrderTicketDTO();
 
         // 获取cookie中保存的newapptk
         Cookie newapptk = fileCookieStore.getCookie(CookieEnum.NEWAPPTK.getKey());
@@ -274,7 +241,7 @@ public class Test12306 {
         postParams.put("tk", newapptk.getValue());
         String result = SendUtils.sendUrl(httpClient, httpClientContext, mapUrlConfDTO, "uamauthclient", postParams);
         UamauthclientDTO uamauthclientDTO = objectMapper.readValue(result, UamauthclientDTO.class);
-        log.debug("uamauthclientDTO = {}", objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(uamauthclientDTO));
+        log.debug("uamauthclientDTO = {}", uamauthclientDTO);
 
         if (uamauthclientDTO.getResultCode() == 0) {
             // 成功，打印账号对应的姓名
@@ -288,147 +255,29 @@ public class Test12306 {
         }
     }
 
-    /**
-     * 初始化操作，用于获取余票查询和车站代码映射的URL地址
-     * 余票查询地址会在otnLeftTicketQuery用到
-     * 车站代码映射地址会在otnLeftTicketQuery用到
-     *
-     * @return List第一个是leftTicketQueryUrl，第二个是stationVersionUrl
-     * @throws IOException
-     */
-    private List<String> otnLeftTicketInit() throws IOException {
+    @Override
+    public void otnLeftTicketQuery(PersonalInfoDTO personalInfoDTO) throws IOException {
 
-        // 访问/otn/leftTicket/init，获取结果
-        String result = SendUtils.sendUrl(httpClient, httpClientContext, mapUrlConfDTO, "left_ticket_init", null);
-        String leftTicketQueryUrl = RegexUtils.getMatch(result, "var CLeftTicketUrl = '(.*)';");
-        String stationVersionUrl = RegexUtils.getMatch(result, "<script .* src=\"(/otn/resources/js/framework/station_name.js\\?station_version=.*)\" .*</script>");
-        log.debug("leftTicketQueryUrl = {}", leftTicketQueryUrl);
-        log.debug("stationNameUrl = {}", stationVersionUrl);
-
-        if (! StringUtils.isEmpty(leftTicketQueryUrl) && ! StringUtils.isEmpty(stationVersionUrl)) {
-            // 成功，将获取到的url就存入cookie
-            stationVersionUrl = "https://kyfw.12306.cn" + stationVersionUrl;
-            List<String> ret = new ArrayList<>();
-            ret.add(leftTicketQueryUrl);
-            ret.add(stationVersionUrl);
-            return ret;
-        } else {
-            // 失败，打印错误信息，并抛出异常
-            String errorMsg = "获取url失败";
-            log.error("error = {}", errorMsg);
-            throw new Ticket12306Exception(ResultEnum.OTN_LEFT_TICKET_INIT_ERROR.getCode(),
-                    ResultEnum.OTN_LEFT_TICKET_INIT_ERROR.getMessage() + ":" + errorMsg);
-        }
-    }
-
-    /**
-     * 更新最新的站点代码
-     * @throws IOException
-     */
-    private void updateStationName(String stationNameUrl) throws IOException {
-
-        // 如果当前站点代码不是最新的，那就更新它
-        if (!stationNameService.getStationNameUrl().equalsIgnoreCase(stationNameUrl)) {
-            String result = SendUtils.sendGet(httpClient, httpClientContext, stationNameUrl);
-            log.debug("result = {}", result);
-            stationNameService.updateStationName(result);
-        }
-    }
-
-    /**
-     * 获取到开始站点和结束站点的代码，并将它们写入cookie中
-     *
-     * @return List第一个是起始站点代码，第二个是结束站点代码
-     * @throws IOException
-     */
-    private List<String> getCodeAndSaveToCookie() throws IOException {
-
-        String fromStationCode = stationNameService.getStationCode(orderTicketDTO.getFromStation());
-        String toStationCode = stationNameService.getStationCode(orderTicketDTO.getToStation());
-        Cookie fromStationCodeCookie = new BasicClientCookie(CookieEnum.FROM_STATION_CODE.getKey(), fromStationCode);
-        Cookie toStationCodeCookie = new BasicClientCookie(CookieEnum.TO_STATION_CODE.getKey(), toStationCode);
-        fileCookieStore.addCookie(fromStationCodeCookie);
-        fileCookieStore.addCookie(toStationCodeCookie);
-
-        List<String> ret = new ArrayList<>();
-        ret.add(fromStationCode);
-        ret.add(toStationCode);
-        return ret;
-    }
-
-    /**
-     * 查询符合条件的车票，查到返回secret，并存入cookie
-     * @param arrayNode
-     * @return
-     * @throws IOException
-     */
-    private String getWantedTicketSecret(ArrayNode arrayNode) throws IOException {
-        for (JsonNode jsonNode : arrayNode) {
-            String r = jsonNode.textValue();
-            String[] rs = r.split("\\|");
-            if (rs[3].equalsIgnoreCase(orderTicketDTO.getStationTrain())) {
-                int seatType = mapSeatConf.get(orderTicketDTO.getSeatType());
-                if (!rs[seatType].equalsIgnoreCase("无") &&
-                        !rs[seatType].equalsIgnoreCase("") &&
-                        !rs[seatType].equalsIgnoreCase("*")) {
-                    // 查询到符合条件的票存入cookie
-                    String secret = URLDecoder.decode(rs[0], StandardCharsets.UTF_8);
-                    log.debug("secret = {}", secret);
-                    Cookie cookie = new BasicClientCookie(CookieEnum.SECRET.getKey(), secret);
-                    fileCookieStore.addCookie(cookie);
-                    return secret;
-                }
-            }
-        }
-        return null;
-    }
-
-    /**
-     * 返回是否已经登录
-     * @return
-     * @throws IOException
-     */
-    private boolean isLogin() throws IOException {
-        // 访问/otn/login/conf，获取结果
-        String result = SendUtils.sendUrl(httpClient, httpClientContext, mapUrlConfDTO, "loginConf", null);
-        Result12306NormalDTO result12306NormalDTO = objectMapper.readValue(result, Result12306NormalDTO.class);
-        log.debug("result12306NormalDTO = {}", objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(result12306NormalDTO));
-
-        if (result12306NormalDTO.getStatus()) {
-            // 成功，将是否登录放入cookie中
-            String isLogin = result12306NormalDTO.getData().get("is_login").textValue();
-            log.debug("isLogin = {}", isLogin);
-            return isLogin.equalsIgnoreCase("Y");
-        } else {
-            // 失败，打印错误信息，并抛出异常
-            String errorMsg = objectMapper.writeValueAsString(result12306NormalDTO.getMessages());
-            log.error("error = {}", errorMsg);
-            throw new Ticket12306Exception(ResultEnum.OTN_LOGIN_CONF_ERROR.getCode(),
-                    ResultEnum.OTN_LOGIN_CONF_ERROR.getMessage() + ":" + errorMsg);
-        }
-    }
-
-    /**
-     * 查询符合条件的余票
-     * @throws IOException
-     */
-    @Test
-    public void otnLeftTicketQuery() throws IOException {
+        // 从personalInfoDTO中还原私人信息
+        HttpClient httpClient = personalInfoDTO.getHttpClient();
+        HttpClientContext httpClientContext = personalInfoDTO.getHttpClientContext();
+        FileCookieStore fileCookieStore = personalInfoDTO.getFileCookieStore();
+        OrderTicketDTO orderTicketDTO = personalInfoDTO.getOrderTicketDTO();
 
         while (true) {
 
             // 调用otnLeftTicketInit获取leftTicketQueryUrl和stationNameUrl
-            List<String> urlList = otnLeftTicketInit();
+            List<String> urlList = otnLeftTicketInit(personalInfoDTO);
             String leftTicketQueryUrl = urlList.get(0);
             String stationNameUrl = urlList.get(1);
             log.debug("leftTicketQueryUrl = {}", leftTicketQueryUrl);
             log.debug("stationNameUrl = {}", stationNameUrl);
 
             // 如果当前站点代码不是最新的，那就更新它
-            updateStationName(stationNameUrl);
+            updateStationName(personalInfoDTO, stationNameUrl);
 
             // 获取起点代码和终点代码，并存入cookie
-            List<String> codeList = getCodeAndSaveToCookie();
+            List<String> codeList = getCodeAndSaveToCookie(personalInfoDTO);
 
             // 获取当前北京时间
             Instant instant = Instant.now();
@@ -440,8 +289,8 @@ public class Test12306 {
                 // 7点-23点正常购买火车票
 
                 // 购票前先确保已经登录过了
-                while (! isLogin()) {
-                    login();
+                while (! isLogin(personalInfoDTO)) {
+                    login(personalInfoDTO);
                 }
 
                 // 访问/otn/leftTicket/query，获取结果
@@ -456,7 +305,7 @@ public class Test12306 {
                 if (leftTicketDTO.getStatus()) {
                     // 成功，跳出循环
                     ArrayNode arrayNode = (ArrayNode) leftTicketDTO.getData().get("result");
-                    String secret = getWantedTicketSecret(arrayNode);
+                    String secret = getWantedTicketSecret(personalInfoDTO, arrayNode);
                     if (!StringUtils.isEmpty(secret)) {
                         break;
                     }
@@ -478,8 +327,14 @@ public class Test12306 {
         }
     }
 
-    @Test
-    public void otnLeftTicketSubmitOrderRequest() throws IOException {
+    @Override
+    public void otnLeftTicketSubmitOrderRequest(PersonalInfoDTO personalInfoDTO) throws IOException {
+
+        // 从personalInfoDTO中还原私人信息
+        HttpClient httpClient = personalInfoDTO.getHttpClient();
+        HttpClientContext httpClientContext = personalInfoDTO.getHttpClientContext();
+        FileCookieStore fileCookieStore = personalInfoDTO.getFileCookieStore();
+        OrderTicketDTO orderTicketDTO = personalInfoDTO.getOrderTicketDTO();
 
         // 获取cookie中保存的fromStationCode, toStationCode, secret
         Cookie fromStationCode = fileCookieStore.getCookie(CookieEnum.FROM_STATION_CODE.getKey());
@@ -514,8 +369,14 @@ public class Test12306 {
         }
     }
 
-    @Test
-    public void otnConfirmPassengerInitDc() throws IOException {
+    @Override
+    public void otnConfirmPassengerInitDc(PersonalInfoDTO personalInfoDTO) throws IOException {
+
+        // 从personalInfoDTO中还原私人信息
+        HttpClient httpClient = personalInfoDTO.getHttpClient();
+        HttpClientContext httpClientContext = personalInfoDTO.getHttpClientContext();
+        FileCookieStore fileCookieStore = personalInfoDTO.getFileCookieStore();
+        OrderTicketDTO orderTicketDTO = personalInfoDTO.getOrderTicketDTO();
 
         // 访问/otn/confirmPassenger/initDc，获取结果
         String result = SendUtils.sendUrl(httpClient, httpClientContext, mapUrlConfDTO, "initdc_url", null);
@@ -540,8 +401,14 @@ public class Test12306 {
         }
     }
 
-    @Test
-    public void otnConfirmPassengerGetPassengerDTOs() throws IOException {
+    @Override
+    public void otnConfirmPassengerGetPassengerDTOs(PersonalInfoDTO personalInfoDTO) throws IOException {
+
+        // 从personalInfoDTO中还原私人信息
+        HttpClient httpClient = personalInfoDTO.getHttpClient();
+        HttpClientContext httpClientContext = personalInfoDTO.getHttpClientContext();
+        FileCookieStore fileCookieStore = personalInfoDTO.getFileCookieStore();
+        OrderTicketDTO orderTicketDTO = personalInfoDTO.getOrderTicketDTO();
 
         // 获取cookie中保存的globalRepeatSubmitTokenCookie
         Cookie globalRepeatSubmitTokenCookie = fileCookieStore.getCookie(CookieEnum.GLOBAL_REPEAT_SUBMIT_TOKEN_COOKIE.getKey());
@@ -581,8 +448,14 @@ public class Test12306 {
         }
     }
 
-    @Test
-    public void otnConfirmPassengerCheckOrderInfo() throws IOException {
+    @Override
+    public void otnConfirmPassengerCheckOrderInfo(PersonalInfoDTO personalInfoDTO) throws IOException {
+
+        // 从personalInfoDTO中还原私人信息
+        HttpClient httpClient = personalInfoDTO.getHttpClient();
+        HttpClientContext httpClientContext = personalInfoDTO.getHttpClientContext();
+        FileCookieStore fileCookieStore = personalInfoDTO.getFileCookieStore();
+        OrderTicketDTO orderTicketDTO = personalInfoDTO.getOrderTicketDTO();
 
         // 获取cookie中保存的globalRepeatSubmitTokenCookie, ticketPeople, ticketInfoForPassengerForm
         Cookie globalRepeatSubmitTokenCookie = fileCookieStore.getCookie(CookieEnum.GLOBAL_REPEAT_SUBMIT_TOKEN_COOKIE.getKey());
@@ -644,8 +517,14 @@ public class Test12306 {
         }
     }
 
-    @Test
-    public void otnConfirmPassengerGetQueueCount() throws IOException {
+    @Override
+    public void otnConfirmPassengerGetQueueCount(PersonalInfoDTO personalInfoDTO) throws IOException {
+
+        // 从personalInfoDTO中还原私人信息
+        HttpClient httpClient = personalInfoDTO.getHttpClient();
+        HttpClientContext httpClientContext = personalInfoDTO.getHttpClientContext();
+        FileCookieStore fileCookieStore = personalInfoDTO.getFileCookieStore();
+        OrderTicketDTO orderTicketDTO = personalInfoDTO.getOrderTicketDTO();
 
         // 获取cookie中保存的globalRepeatSubmitTokenCookie, ticketInfoForPassengerForm
         Cookie globalRepeatSubmitTokenCookie = fileCookieStore.getCookie(CookieEnum.GLOBAL_REPEAT_SUBMIT_TOKEN_COOKIE.getKey());
@@ -683,8 +562,14 @@ public class Test12306 {
         }
     }
 
-    @Test
-    public void otnConfirmPassengerConfirmSingleForQueue() throws IOException {
+    @Override
+    public void otnConfirmPassengerConfirmSingleForQueue(PersonalInfoDTO personalInfoDTO) throws IOException {
+
+        // 从personalInfoDTO中还原私人信息
+        HttpClient httpClient = personalInfoDTO.getHttpClient();
+        HttpClientContext httpClientContext = personalInfoDTO.getHttpClientContext();
+        FileCookieStore fileCookieStore = personalInfoDTO.getFileCookieStore();
+        OrderTicketDTO orderTicketDTO = personalInfoDTO.getOrderTicketDTO();
 
         // 获取cookie中保存的globalRepeatSubmitTokenCookie, ticketPeople, ticketInfoForPassengerForm
         Cookie globalRepeatSubmitTokenCookie = fileCookieStore.getCookie(CookieEnum.GLOBAL_REPEAT_SUBMIT_TOKEN_COOKIE.getKey());
@@ -745,8 +630,14 @@ public class Test12306 {
         }
     }
 
-    @Test
-    public void otnConfirmPassengerQueryOrderWaitTime() throws IOException {
+    @Override
+    public void otnConfirmPassengerQueryOrderWaitTime(PersonalInfoDTO personalInfoDTO) throws IOException {
+
+        // 从personalInfoDTO中还原私人信息
+        HttpClient httpClient = personalInfoDTO.getHttpClient();
+        HttpClientContext httpClientContext = personalInfoDTO.getHttpClientContext();
+        FileCookieStore fileCookieStore = personalInfoDTO.getFileCookieStore();
+        OrderTicketDTO orderTicketDTO = personalInfoDTO.getOrderTicketDTO();
         while (true) {
 
             // 访问/otn/confirmPassenger/queryOrderWaitTime，获取结果
@@ -781,25 +672,176 @@ public class Test12306 {
         }
     }
 
-    @Test
-    public void login() throws IOException {
-        passportCaptchaCaptchaImage64();
-        getAnswer();
-        passportCaptchaCaptchaCheck();
-        passportWebLogin();
-        passportWebAuthUamtk();
-        otnUamauthclient();
+    @Override
+    public void login(PersonalInfoDTO personalInfoDTO) throws IOException {
+        passportCaptchaCaptchaImage64(personalInfoDTO);
+        getAnswer(personalInfoDTO);
+        passportCaptchaCaptchaCheck(personalInfoDTO);
+        passportWebLogin(personalInfoDTO);
+        passportWebAuthUamtk(personalInfoDTO);
+        otnUamauthclient(personalInfoDTO);
     }
 
-    @Test
-    public void order() throws IOException {
-        otnLeftTicketQuery();
-        otnLeftTicketSubmitOrderRequest();
-        otnConfirmPassengerInitDc();
-        otnConfirmPassengerGetPassengerDTOs();
-        otnConfirmPassengerCheckOrderInfo();
-        otnConfirmPassengerGetQueueCount();
-        otnConfirmPassengerConfirmSingleForQueue();
-        otnConfirmPassengerQueryOrderWaitTime();
+    @Override
+    public void order(PersonalInfoDTO personalInfoDTO) throws IOException {
+        otnLeftTicketQuery(personalInfoDTO);
+        otnLeftTicketSubmitOrderRequest(personalInfoDTO);
+        otnConfirmPassengerInitDc(personalInfoDTO);
+        otnConfirmPassengerGetPassengerDTOs(personalInfoDTO);
+        otnConfirmPassengerCheckOrderInfo(personalInfoDTO);
+        otnConfirmPassengerGetQueueCount(personalInfoDTO);
+        otnConfirmPassengerConfirmSingleForQueue(personalInfoDTO);
+        otnConfirmPassengerQueryOrderWaitTime(personalInfoDTO);
     }
+
+    /**
+     * 初始化操作，用于获取余票查询和车站代码映射的URL地址
+     * 余票查询地址会在otnLeftTicketQuery用到
+     * 车站代码映射地址会在otnLeftTicketQuery用到
+     *
+     * @return List第一个是leftTicketQueryUrl，第二个是stationVersionUrl
+     * @throws IOException
+     */
+    private List<String> otnLeftTicketInit(PersonalInfoDTO personalInfoDTO) throws IOException {
+
+        // 从personalInfoDTO中还原私人信息
+        HttpClient httpClient = personalInfoDTO.getHttpClient();
+        HttpClientContext httpClientContext = personalInfoDTO.getHttpClientContext();
+        FileCookieStore fileCookieStore = personalInfoDTO.getFileCookieStore();
+        OrderTicketDTO orderTicketDTO = personalInfoDTO.getOrderTicketDTO();
+
+        // 访问/otn/leftTicket/init，获取结果
+        String result = SendUtils.sendUrl(httpClient, httpClientContext, mapUrlConfDTO, "left_ticket_init", null);
+        String leftTicketQueryUrl = RegexUtils.getMatch(result, "var CLeftTicketUrl = '(.*)';");
+        String stationVersionUrl = RegexUtils.getMatch(result, "<script .* src=\"(/otn/resources/js/framework/station_name.js\\?station_version=.*)\" .*</script>");
+        log.debug("leftTicketQueryUrl = {}", leftTicketQueryUrl);
+        log.debug("stationNameUrl = {}", stationVersionUrl);
+
+        if (! StringUtils.isEmpty(leftTicketQueryUrl) && ! StringUtils.isEmpty(stationVersionUrl)) {
+            // 成功，将获取到的url就存入cookie
+            stationVersionUrl = "https://kyfw.12306.cn" + stationVersionUrl;
+            List<String> ret = new ArrayList<>();
+            ret.add(leftTicketQueryUrl);
+            ret.add(stationVersionUrl);
+            return ret;
+        } else {
+            // 失败，打印错误信息，并抛出异常
+            String errorMsg = "获取url失败";
+            log.error("error = {}", errorMsg);
+            throw new Ticket12306Exception(ResultEnum.OTN_LEFT_TICKET_INIT_ERROR.getCode(),
+                    ResultEnum.OTN_LEFT_TICKET_INIT_ERROR.getMessage() + ":" + errorMsg);
+        }
+    }
+
+    /**
+     * 更新最新的站点代码
+     * @throws IOException
+     */
+    private void updateStationName(PersonalInfoDTO personalInfoDTO, String stationNameUrl) throws IOException {
+
+        // 从personalInfoDTO中还原私人信息
+        HttpClient httpClient = personalInfoDTO.getHttpClient();
+        HttpClientContext httpClientContext = personalInfoDTO.getHttpClientContext();
+        FileCookieStore fileCookieStore = personalInfoDTO.getFileCookieStore();
+        OrderTicketDTO orderTicketDTO = personalInfoDTO.getOrderTicketDTO();
+
+        // 如果当前站点代码不是最新的，那就更新它
+        if (!stationNameService.getStationNameUrl().equalsIgnoreCase(stationNameUrl)) {
+            String result = SendUtils.sendGet(httpClient, httpClientContext, stationNameUrl);
+            log.debug("result = {}", result);
+            stationNameService.updateStationName(result);
+        }
+    }
+
+    /**
+     * 获取到开始站点和结束站点的代码，并将它们写入cookie中
+     *
+     * @return List第一个是起始站点代码，第二个是结束站点代码
+     * @throws IOException
+     */
+    private List<String> getCodeAndSaveToCookie(PersonalInfoDTO personalInfoDTO) throws IOException {
+
+        // 从personalInfoDTO中还原私人信息
+        HttpClient httpClient = personalInfoDTO.getHttpClient();
+        HttpClientContext httpClientContext = personalInfoDTO.getHttpClientContext();
+        FileCookieStore fileCookieStore = personalInfoDTO.getFileCookieStore();
+        OrderTicketDTO orderTicketDTO = personalInfoDTO.getOrderTicketDTO();
+
+        String fromStationCode = stationNameService.getStationCode(orderTicketDTO.getFromStation());
+        String toStationCode = stationNameService.getStationCode(orderTicketDTO.getToStation());
+        Cookie fromStationCodeCookie = new BasicClientCookie(CookieEnum.FROM_STATION_CODE.getKey(), fromStationCode);
+        Cookie toStationCodeCookie = new BasicClientCookie(CookieEnum.TO_STATION_CODE.getKey(), toStationCode);
+        fileCookieStore.addCookie(fromStationCodeCookie);
+        fileCookieStore.addCookie(toStationCodeCookie);
+
+        List<String> ret = new ArrayList<>();
+        ret.add(fromStationCode);
+        ret.add(toStationCode);
+        return ret;
+    }
+
+    /**
+     * 查询符合条件的车票，查到返回secret，并存入cookie
+     * @param arrayNode
+     * @return
+     * @throws IOException
+     */
+    private String getWantedTicketSecret(PersonalInfoDTO personalInfoDTO, ArrayNode arrayNode) throws IOException {
+
+        // 从personalInfoDTO中还原私人信息
+        HttpClient httpClient = personalInfoDTO.getHttpClient();
+        HttpClientContext httpClientContext = personalInfoDTO.getHttpClientContext();
+        FileCookieStore fileCookieStore = personalInfoDTO.getFileCookieStore();
+        OrderTicketDTO orderTicketDTO = personalInfoDTO.getOrderTicketDTO();
+        for (JsonNode jsonNode : arrayNode) {
+            String r = jsonNode.textValue();
+            String[] rs = r.split("\\|");
+            if (rs[3].equalsIgnoreCase(orderTicketDTO.getStationTrain())) {
+                int seatType = mapSeatConf.get(orderTicketDTO.getSeatType());
+                if (!rs[seatType].equalsIgnoreCase("无") &&
+                        !rs[seatType].equalsIgnoreCase("") &&
+                        !rs[seatType].equalsIgnoreCase("*")) {
+                    // 查询到符合条件的票存入cookie
+                    String secret = URLDecoder.decode(rs[0], StandardCharsets.UTF_8);
+                    log.debug("secret = {}", secret);
+                    Cookie cookie = new BasicClientCookie(CookieEnum.SECRET.getKey(), secret);
+                    fileCookieStore.addCookie(cookie);
+                    return secret;
+                }
+            }
+        }
+        return null;
+    }
+
+    /**
+     * 返回是否已经登录
+     * @return
+     * @throws IOException
+     */
+    private boolean isLogin(PersonalInfoDTO personalInfoDTO) throws IOException {
+
+        // 从personalInfoDTO中还原私人信息
+        HttpClient httpClient = personalInfoDTO.getHttpClient();
+        HttpClientContext httpClientContext = personalInfoDTO.getHttpClientContext();
+        FileCookieStore fileCookieStore = personalInfoDTO.getFileCookieStore();
+        OrderTicketDTO orderTicketDTO = personalInfoDTO.getOrderTicketDTO();
+        // 访问/otn/login/conf，获取结果
+        String result = SendUtils.sendUrl(httpClient, httpClientContext, mapUrlConfDTO, "loginConf", null);
+        Result12306NormalDTO result12306NormalDTO = objectMapper.readValue(result, Result12306NormalDTO.class);
+        log.debug("result12306NormalDTO = {}", objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(result12306NormalDTO));
+
+        if (result12306NormalDTO.getStatus()) {
+            // 成功，将是否登录放入cookie中
+            String isLogin = result12306NormalDTO.getData().get("is_login").textValue();
+            log.debug("isLogin = {}", isLogin);
+            return isLogin.equalsIgnoreCase("Y");
+        } else {
+            // 失败，打印错误信息，并抛出异常
+            String errorMsg = objectMapper.writeValueAsString(result12306NormalDTO.getMessages());
+            log.error("error = {}", errorMsg);
+            throw new Ticket12306Exception(ResultEnum.OTN_LOGIN_CONF_ERROR.getCode(),
+                    ResultEnum.OTN_LOGIN_CONF_ERROR.getMessage() + ":" + errorMsg);
+        }
+    }
+
 }
