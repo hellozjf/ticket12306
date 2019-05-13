@@ -3,6 +3,7 @@ package com.hellozjf.ticket12306;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.hellozjf.ticket12306.constant.CookieKey;
 import com.hellozjf.ticket12306.custom.FileCookieStore;
 import com.hellozjf.ticket12306.dto.OrderTicketDTO;
 import com.hellozjf.ticket12306.dto.UrlConfDTO;
@@ -93,8 +94,8 @@ public class Test12306 {
         log.debug("leftTicketQueryUrl = {}", leftTicketQueryUrl);
         log.debug("stationNameUrl = {}", stationVersionUrl);
 
-        Cookie leftTicketQuerCookie = new BasicClientCookie("leftTicketQueryUrl", leftTicketQueryUrl);
-        Cookie stationNameCookie = new BasicClientCookie("stationNameUrl", "https://kyfw.12306.cn" + stationVersionUrl);
+        Cookie leftTicketQuerCookie = new BasicClientCookie(CookieKey.LEFT_TICKET_QUERY_URL.getKey(), leftTicketQueryUrl);
+        Cookie stationNameCookie = new BasicClientCookie(CookieKey.STATION_NAME_URL.getKey(), "https://kyfw.12306.cn" + stationVersionUrl);
         fileCookieStore.addCookie(leftTicketQuerCookie);
         fileCookieStore.addCookie(stationNameCookie);
     }
@@ -117,13 +118,13 @@ public class Test12306 {
 
         // 将问题图片的base64值放入cookie中
         String image = jsonNode.get("image").textValue();
-        Cookie cookie = new BasicClientCookie("image", image);
+        Cookie cookie = new BasicClientCookie(CookieKey.IMAGE.getKey(), image);
         fileCookieStore.addCookie(cookie);
     }
 
     @Test
     public void getAnswer() throws IOException {
-        Cookie image = fileCookieStore.getCookie("image");
+        Cookie image = fileCookieStore.getCookie(CookieKey.IMAGE.getKey());
         Map<String, String> postParams = new HashMap<>();
         postParams.put("base64String", image.getValue());
         String result = SendUtils.sendPost(httpClient, httpClientContext, "http://aliyun.hellozjf.com:8080/result/base64", postParams);
@@ -132,13 +133,13 @@ public class Test12306 {
         log.debug("prettyResult = {}", prettyResult);
 
         // 将问题的答案放到cookie中
-        Cookie cookie = new BasicClientCookie("answer", jsonNode.get("data").textValue());
+        Cookie cookie = new BasicClientCookie(CookieKey.ANSWER.getKey(), jsonNode.get("data").textValue());
         fileCookieStore.addCookie(cookie);
     }
 
     @Test
     public void passportCaptchaCaptchaCheck() throws IOException {
-        Cookie answer = fileCookieStore.getCookie("answer");
+        Cookie answer = fileCookieStore.getCookie(CookieKey.ANSWER.getKey());
         Map<String, String> postParams = new HashMap<>();
         postParams.put("answer", answer.getValue());
         postParams.put("login_site", "E");
@@ -163,10 +164,10 @@ public class Test12306 {
         if (! StringUtils.isEmpty(result)) {
             JsonNode jsonNode = objectMapper.readTree(result);
             String uamtk = jsonNode.get("uamtk").textValue();
-            Cookie cookie = new BasicClientCookie("uamtk", uamtk);
+            Cookie cookie = new BasicClientCookie(CookieKey.UAMTK.getKey(), uamtk);
             fileCookieStore.addCookie(cookie);
         } else {
-            fileCookieStore.delCookie("uamtk");
+            fileCookieStore.delCookie(CookieKey.UAMTK.getKey());
         }
     }
 
@@ -179,22 +180,21 @@ public class Test12306 {
 
         JsonNode jsonNode = objectMapper.readTree(result);
         String newapptk = jsonNode.get("newapptk").textValue();
-        Cookie cookie = new BasicClientCookie("newapptk", newapptk);
+        Cookie cookie = new BasicClientCookie(CookieKey.NEWAPPTK.getKey(), newapptk);
         fileCookieStore.addCookie(cookie);
     }
 
     @Test
     public void otnUamauthclient() throws IOException {
-        Cookie answer = fileCookieStore.getCookie("newapptk");
+        Cookie answer = fileCookieStore.getCookie(CookieKey.NEWAPPTK.getKey());
         Map<String, String> postParams = new HashMap<>();
         postParams.put("tk", answer.getValue());
         String result = SendUtils.sendUrl(httpClient, httpClientContext, mapUrlConfDTO, "uamauthclient", postParams);
         log.debug("result = {}", result);
     }
 
-    @Test
     public void updateStationName() throws IOException {
-        Cookie stationNameUrl = fileCookieStore.getCookie("stationNameUrl");
+        Cookie stationNameUrl = fileCookieStore.getCookie(CookieKey.STATION_NAME_URL.getKey());
         log.debug("stationNameUrl = {}", stationNameUrl.getValue());
         String result = SendUtils.sendGet(httpClient, httpClientContext, stationNameUrl.getValue());
         log.debug("result = {}", result);
@@ -203,17 +203,23 @@ public class Test12306 {
 
     @Test
     public void otnLeftTicketQuery() throws IOException {
-        Cookie leftTicketQueryUrl = fileCookieStore.getCookie("leftTicketQueryUrl");
+        Cookie leftTicketQueryUrl = fileCookieStore.getCookie(CookieKey.LEFT_TICKET_QUERY_URL.getKey());
+        Cookie stationNameUrl = fileCookieStore.getCookie(CookieKey.STATION_NAME_URL.getKey());
         log.debug("leftTicketQueryUrl = {}", leftTicketQueryUrl.getValue());
+        log.debug("stationNameUrl = {}", stationNameUrl.getValue());
 
-        // 先要更新一下站点的代码
-        updateStationName();
+        // 如果当前站点代码不是最新的，那就更新它
+        if (! stationNameService.getStationNameUrl().equalsIgnoreCase(stationNameUrl.getValue())) {
+            String result = SendUtils.sendGet(httpClient, httpClientContext, stationNameUrl.getValue());
+            log.debug("result = {}", result);
+            stationNameService.updateStationName(result);
+        }
 
         // 获取起点代码和终点代码，并存入cookie
         String fromStationCode = stationNameService.getStationCode(orderTicketDTO.getFromStation());
         String toStationCode = stationNameService.getStationCode(orderTicketDTO.getToStation());
-        Cookie fromStationCodeCookie = new BasicClientCookie("fromStationCode", fromStationCode);
-        Cookie toStationCodeCookie = new BasicClientCookie("toStationCode", toStationCode);
+        Cookie fromStationCodeCookie = new BasicClientCookie(CookieKey.FROM_STATION_CODE.getKey(), fromStationCode);
+        Cookie toStationCodeCookie = new BasicClientCookie(CookieKey.TO_STATION_CODE.getKey(), toStationCode);
         fileCookieStore.addCookie(fromStationCodeCookie);
         fileCookieStore.addCookie(toStationCodeCookie);
 
@@ -237,7 +243,7 @@ public class Test12306 {
                     // 查询到符合条件的票存入cookie
                     String secret = URLDecoder.decode(rs[0], StandardCharsets.UTF_8);
                     log.debug("secret = {}", secret);
-                    Cookie cookie = new BasicClientCookie("secret", secret);
+                    Cookie cookie = new BasicClientCookie(CookieKey.SECRET.getKey(), secret);
                     fileCookieStore.addCookie(cookie);
                     break;
                 }
@@ -248,9 +254,9 @@ public class Test12306 {
     @Test
     public void otnLeftTicketSubmitOrderRequest() throws IOException {
 
-        Cookie fromStationCode = fileCookieStore.getCookie("fromStationCode");
-        Cookie toStationCode = fileCookieStore.getCookie("toStationCode");
-        Cookie secret = fileCookieStore.getCookie("secret");
+        Cookie fromStationCode = fileCookieStore.getCookie(CookieKey.FROM_STATION_CODE.getKey());
+        Cookie toStationCode = fileCookieStore.getCookie(CookieKey.TO_STATION_CODE.getKey());
+        Cookie secret = fileCookieStore.getCookie(CookieKey.SECRET.getKey());
         if (secret == null) {
             log.error("没有票，无法下单");
             return;
@@ -280,15 +286,15 @@ public class Test12306 {
         log.debug("globalRepeatSubmitToken = {}", globalRepeatSubmitToken);
         log.debug("ticketInfoForPassengerForm = {}", ticketInfoForPassengerForm);
 
-        Cookie globalRepeatSubmitTokenCookie = new BasicClientCookie("globalRepeatSubmitTokenCookie", globalRepeatSubmitToken);
-        Cookie ticketInfoForPassengerFormCookie = new BasicClientCookie("ticketInfoForPassengerForm", ticketInfoForPassengerForm);
+        Cookie globalRepeatSubmitTokenCookie = new BasicClientCookie(CookieKey.GLOBAL_REPEAT_SUBMIT_TOKEN_COOKIE.getKey(), globalRepeatSubmitToken);
+        Cookie ticketInfoForPassengerFormCookie = new BasicClientCookie(CookieKey.TICKET_INFO_FOR_PASSENGER_FORM.getKey(), ticketInfoForPassengerForm);
         fileCookieStore.addCookie(globalRepeatSubmitTokenCookie);
         fileCookieStore.addCookie(ticketInfoForPassengerFormCookie);
     }
 
     @Test
     public void otnConfirmPassengerGetPassengerDTOs() throws IOException {
-        Cookie globalRepeatSubmitTokenCookie = fileCookieStore.getCookie("globalRepeatSubmitTokenCookie");
+        Cookie globalRepeatSubmitTokenCookie = fileCookieStore.getCookie(CookieKey.GLOBAL_REPEAT_SUBMIT_TOKEN_COOKIE.getKey());
 
         Map<String, String> postParams = new HashMap<>();
         postParams.put("_json_attr", "");
@@ -304,7 +310,7 @@ public class Test12306 {
             for (JsonNode normalPassenger : normalPassengers) {
                 if (normalPassenger.get("passenger_name").textValue().equalsIgnoreCase(orderTicketDTO.getTicketPeople())) {
                     // 将乘坐人信息写入cookie
-                    Cookie ticketPeople = new BasicClientCookie("ticketPeople", objectMapper.writeValueAsString(normalPassenger));
+                    Cookie ticketPeople = new BasicClientCookie(CookieKey.TICKET_PEOPLE.getKey(), objectMapper.writeValueAsString(normalPassenger));
                     log.debug("ticketPeople = {}", ticketPeople.getValue());
                     fileCookieStore.addCookie(ticketPeople);
                 }
@@ -316,9 +322,9 @@ public class Test12306 {
 
     @Test
     public void otnConfirmPassengerCheckOrderInfo() throws IOException {
-        Cookie globalRepeatSubmitTokenCookie = fileCookieStore.getCookie("globalRepeatSubmitTokenCookie");
-        Cookie ticketPeople = fileCookieStore.getCookie("ticketPeople");
-        Cookie ticketInfoForPassengerForm = fileCookieStore.getCookie("ticketInfoForPassengerForm");
+        Cookie globalRepeatSubmitTokenCookie = fileCookieStore.getCookie(CookieKey.GLOBAL_REPEAT_SUBMIT_TOKEN_COOKIE.getKey());
+        Cookie ticketPeople = fileCookieStore.getCookie(CookieKey.TICKET_PEOPLE.getKey());
+        Cookie ticketInfoForPassengerForm = fileCookieStore.getCookie(CookieKey.TICKET_INFO_FOR_PASSENGER_FORM.getKey());
         JsonNode ticketPeopleNode = objectMapper.readTree(ticketPeople.getValue());
         JsonNode ticketInfoForPassengerFormNode = objectMapper.readTree(ticketInfoForPassengerForm.getValue());
         log.debug("ticketPeopleNode = {}", objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(ticketPeopleNode));
@@ -360,8 +366,8 @@ public class Test12306 {
 
     @Test
     public void otnConfirmPassengerGetQueueCount() throws IOException {
-        Cookie globalRepeatSubmitTokenCookie = fileCookieStore.getCookie("globalRepeatSubmitTokenCookie");
-        Cookie ticketInfoForPassengerForm = fileCookieStore.getCookie("ticketInfoForPassengerForm");
+        Cookie globalRepeatSubmitTokenCookie = fileCookieStore.getCookie(CookieKey.GLOBAL_REPEAT_SUBMIT_TOKEN_COOKIE.getKey());
+        Cookie ticketInfoForPassengerForm = fileCookieStore.getCookie(CookieKey.TICKET_INFO_FOR_PASSENGER_FORM.getKey());
         JsonNode ticketInfoForPassengerFormNode = objectMapper.readTree(ticketInfoForPassengerForm.getValue());
 
         Map<String, String> postParams = new HashMap<>();
@@ -384,9 +390,9 @@ public class Test12306 {
 
     @Test
     public void otnConfirmPassengerConfirmSingleForQueue() throws IOException {
-        Cookie globalRepeatSubmitTokenCookie = fileCookieStore.getCookie("globalRepeatSubmitTokenCookie");
-        Cookie ticketPeople = fileCookieStore.getCookie("ticketPeople");
-        Cookie ticketInfoForPassengerForm = fileCookieStore.getCookie("ticketInfoForPassengerForm");
+        Cookie globalRepeatSubmitTokenCookie = fileCookieStore.getCookie(CookieKey.GLOBAL_REPEAT_SUBMIT_TOKEN_COOKIE.getKey());
+        Cookie ticketPeople = fileCookieStore.getCookie(CookieKey.TICKET_PEOPLE.getKey());
+        Cookie ticketInfoForPassengerForm = fileCookieStore.getCookie(CookieKey.TICKET_INFO_FOR_PASSENGER_FORM.getKey());
         JsonNode ticketPeopleNode = objectMapper.readTree(ticketPeople.getValue());
         JsonNode ticketInfoForPassengerFormNode = objectMapper.readTree(ticketInfoForPassengerForm.getValue());
 
@@ -430,10 +436,28 @@ public class Test12306 {
 
     @Test
     public void otnConfirmPassengerQueryOrderWaitTime() throws IOException {
-        String result = SendUtils.sendUrl(httpClient, httpClientContext, mapUrlConfDTO, "queryOrderWaitTimeUrl", null,
-                String.valueOf(System.currentTimeMillis()));
-        JsonNode jsonNode = objectMapper.readTree(result);
-        log.debug("result = {}", objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(jsonNode));
+        while (true) {
+            String result = SendUtils.sendUrl(httpClient, httpClientContext, mapUrlConfDTO, "queryOrderWaitTimeUrl", null,
+                    String.valueOf(System.currentTimeMillis()));
+
+            JsonNode jsonNode = objectMapper.readTree(result);
+            if (! jsonNode.get("status").booleanValue()) {
+                log.error("otnConfirmPassengerQueryOrderWaitTime error: {}", objectMapper.writeValueAsString(jsonNode.get("messages")));
+                break;
+            }
+            JsonNode data = jsonNode.get("data");
+            JsonNode orderId = data.get("orderId");
+            if (orderId != null && !orderId.isNull()) {
+                log.debug("prettyResult = {}", objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(jsonNode));
+                break;
+            }
+
+            try {
+                Thread.sleep(1000);
+            } catch (InterruptedException e) {
+                log.error("e = {}", e);
+            }
+        }
     }
 
     @Test
