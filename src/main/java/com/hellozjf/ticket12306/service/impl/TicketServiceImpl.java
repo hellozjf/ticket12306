@@ -354,18 +354,31 @@ public class TicketServiceImpl implements TicketService {
         postParams.put("purpose_codes", "ADULT");
         postParams.put("query_from_station_name", fromStationCode.getValue());
         postParams.put("toStationCode", toStationCode.getValue());
-        String result = SendUtils.sendUrl(httpClient, httpClientContext, mapUrlConfDTO, "submit_station_url", postParams);
-        Result12306NormalDTO result12306NormalDTO = objectMapper.readValue(result, Result12306NormalDTO.class);
-        log.debug("result12306NormalDTO = {}", objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(result12306NormalDTO));
 
-        if (result12306NormalDTO.getStatus()) {
-            // 成功
-        } else {
-            // 失败，打印错误信息，并抛出异常
-            String errorMsg = objectMapper.writeValueAsString(result12306NormalDTO.getMessages());
-            log.error("error = {}", errorMsg);
-            throw new Ticket12306Exception(ResultEnum.LEFT_TICKET_QUERY_ERROR.getCode(),
-                    ResultEnum.LEFT_TICKET_QUERY_ERROR.getMessage() + ":" + errorMsg);
+        while (true) {
+            String result = SendUtils.sendUrl(httpClient, httpClientContext, mapUrlConfDTO, "submit_station_url", postParams);
+            log.debug("result = {}", result);
+            if (StringUtils.isEmpty(result)) {
+                try {
+                    TimeUnit.SECONDS.sleep(5);
+                } catch (InterruptedException e) {
+                    log.error("e = {}", e);
+                }
+                continue;
+            }
+            Result12306NormalDTO result12306NormalDTO = objectMapper.readValue(result, Result12306NormalDTO.class);
+            log.debug("result12306NormalDTO = {}", objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(result12306NormalDTO));
+
+            if (result12306NormalDTO.getStatus()) {
+                // 成功
+                break;
+            } else {
+                // 失败，打印错误信息，并抛出异常
+                String errorMsg = objectMapper.writeValueAsString(result12306NormalDTO.getMessages());
+                log.error("error = {}", errorMsg);
+                throw new Ticket12306Exception(ResultEnum.LEFT_TICKET_QUERY_ERROR.getCode(),
+                        ResultEnum.LEFT_TICKET_QUERY_ERROR.getMessage() + ":" + errorMsg);
+            }
         }
     }
 
@@ -608,7 +621,7 @@ public class TicketServiceImpl implements TicketService {
         postParams.put("train_location", ticketInfoForPassengerFormNode.get("train_location").textValue());
         // TODO 可选座位
         postParams.put("choose_seats", "");
-        postParams.put("seatDetailType", "1F");
+        postParams.put("seatDetailType", "");
         postParams.put("whatsSelect", "1");
         postParams.put("roomType", "00");
         postParams.put("dwAll", "N");
@@ -638,11 +651,15 @@ public class TicketServiceImpl implements TicketService {
         HttpClientContext httpClientContext = personalInfoDTO.getHttpClientContext();
         FileCookieStore fileCookieStore = personalInfoDTO.getFileCookieStore();
         OrderTicketDTO orderTicketDTO = personalInfoDTO.getOrderTicketDTO();
+
+        // 获取cookie中保存的globalRepeatSubmitTokenCookie
+        Cookie globalRepeatSubmitTokenCookie = fileCookieStore.getCookie(CookieEnum.GLOBAL_REPEAT_SUBMIT_TOKEN_COOKIE.getKey());
+
         while (true) {
 
             // 访问/otn/confirmPassenger/queryOrderWaitTime，获取结果
             String result = SendUtils.sendUrl(httpClient, httpClientContext, mapUrlConfDTO, "queryOrderWaitTimeUrl", null,
-                    String.valueOf(System.currentTimeMillis()));
+                    String.valueOf(System.currentTimeMillis()), globalRepeatSubmitTokenCookie.getValue());
             Result12306NormalDTO result12306NormalDTO = objectMapper.readValue(result, Result12306NormalDTO.class);
             log.debug("result12306NormalDTO = {}", objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(result12306NormalDTO));
 
