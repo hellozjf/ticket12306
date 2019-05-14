@@ -661,12 +661,21 @@ public class TicketServiceImpl implements TicketService {
                     } catch (InterruptedException e) {
                         log.error("e = {}", e);
                     }
-                } else if (waitTime == -2) {
-                    // 失败，打印错误信息，并抛出异常
-                    String errorMsg = data.get("msg").textValue();
-                    log.error("error = {}", errorMsg);
-                    throw new Ticket12306Exception(ResultEnum.OTN_CONFIRM_PASSENGER_QUERY_ORDER_WAIT_TIME_ERROR.getCode(),
-                            ResultEnum.OTN_CONFIRM_PASSENGER_QUERY_ORDER_WAIT_TIME_ERROR.getMessage() + ":" + errorMsg);
+                } else if (waitTime < 0) {
+                    if (data.get("msg") != null && !data.get("msg").isNull()) {
+                        // 失败，打印错误信息，并抛出异常
+                        String errorMsg = data.get("msg").textValue();
+                        log.error("error = {}", errorMsg);
+                        throw new Ticket12306Exception(ResultEnum.OTN_CONFIRM_PASSENGER_QUERY_ORDER_WAIT_TIME_ERROR.getCode(),
+                                ResultEnum.OTN_CONFIRM_PASSENGER_QUERY_ORDER_WAIT_TIME_ERROR.getMessage() + ":" + errorMsg);
+                    } else {
+                        try {
+                            // 说明不是出错，而是12306官网返回的结果有问题，按官方的建议休眠3秒算了
+                            TimeUnit.SECONDS.sleep(3);
+                        } catch (InterruptedException e) {
+                            log.error("e = {}", e);
+                        }
+                    }
                 }
             } else {
                 // 失败，打印错误信息，并抛出异常

@@ -157,7 +157,7 @@ public class BeanConfig {
         return (args) -> {
             OrderTicketDTO orderTicketDTO = new OrderTicketDTO();
             orderTicketDTO.setStationDate("2019-05-18");
-            orderTicketDTO.setStationTrain("G7535");
+            orderTicketDTO.setStationTrain("D379");
             orderTicketDTO.setFromStation("杭州");
             orderTicketDTO.setToStation("宁波");
             orderTicketDTO.setSeatType("二等座");
