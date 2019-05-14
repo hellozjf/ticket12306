@@ -120,4 +120,10 @@ public interface TicketService {
      * @throws IOException
      */
     void order(PersonalInfoDTO personalInfoDTO) throws IOException;
+
+    /**
+     * 清除自定义的Cookie
+     * @throws IOException
+     */
+    void clearCustomCookie(PersonalInfoDTO personalInfoDTO) throws IOException;
 }

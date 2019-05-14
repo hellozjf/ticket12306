@@ -75,6 +75,11 @@ public class OrderTicketRunable implements Runnable {
                 log.error("e = {}", e);
                 log.error("捕获到异常，关小黑屋五分钟");
                 try {
+                    ticketService.clearCustomCookie(personalInfoDTO);
+                } catch (IOException e1) {
+                    log.error("e1 = {}", e1);
+                }
+                try {
                     TimeUnit.MINUTES.sleep(5);
                 } catch (InterruptedException e1) {
                     log.error("e1 = {}", e1);

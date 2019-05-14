@@ -1,5 +1,6 @@
 package com.hellozjf.ticket12306.util;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.hellozjf.ticket12306.dto.UrlConfDTO;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.*;
@@ -73,7 +74,8 @@ public class SendUtils {
             if (!StringUtils.isEmpty(result)) {
                 log.info("url: {}", urlString);
                 if (postParams != null) {
-                    log.info("input: {}", EntityUtils.toString(httpPost.getEntity()));
+                    ObjectMapper objectMapper = new ObjectMapper();
+                    log.info("input: {}", objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(postParams));
                 } else {
                     log.info("input: null");
                 }

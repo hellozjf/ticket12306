@@ -726,6 +726,20 @@ public class TicketServiceImpl implements TicketService {
         otnConfirmPassengerQueryOrderWaitTime(personalInfoDTO);
     }
 
+    @Override
+    public void clearCustomCookie(PersonalInfoDTO personalInfoDTO) throws IOException {
+
+        // 从personalInfoDTO中还原私人信息
+        HttpClient httpClient = personalInfoDTO.getHttpClient();
+        HttpClientContext httpClientContext = personalInfoDTO.getHttpClientContext();
+        FileCookieStore fileCookieStore = personalInfoDTO.getFileCookieStore();
+        OrderTicketDTO orderTicketDTO = personalInfoDTO.getOrderTicketDTO();
+
+        for (CookieEnum cookieEnum : CookieEnum.values()) {
+            fileCookieStore.delCookie(cookieEnum.getKey());
+        }
+    }
+
     /**
      * 初始化操作，用于获取余票查询和车站代码映射的URL地址
      * 余票查询地址会在otnLeftTicketQuery用到
