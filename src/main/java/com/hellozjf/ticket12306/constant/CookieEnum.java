@@ -23,6 +23,12 @@ public enum CookieEnum {
     TICKET_INFO_FOR_PASSENGER_FORM("cookie_ticketInfoForPassengerForm", "票相关的所有信息"),
     TICKET_PEOPLE("cookie_ticketPeople", "乘坐人信息"),
     IS_LOGIN("cookie_is_login", "是否登录"),
+
+    JC_SAVE_SHOWINS("_jc_save_showIns", "解决慢排队所需要的cookie"),
+    JC_SAVE_WFDC_FLAG("_jc_save_wfdc_flag", "解决慢排队所需要的cookie"),
+    JC_SAVE_FROMDATE("_jc_save_fromDate", "解决慢排队所需要的cookie"),
+    JC_SAVE_TODATE("_jc_save_toDate", "解决慢排队所需要的cookie"),
+    RAIL_DEVICEID("RAIL_DEVICEID", "解决慢排队所需要的cookie"),
     ;
 
     String key;

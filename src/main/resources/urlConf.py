@@ -329,7 +329,7 @@ urls = {
         "is_json": False,
     },
     "queryOrderWaitTimeUrl": {  # 订单等待页面
-        "req_url": "/otn/confirmPassenger/queryOrderWaitTime?random={0}&tourFlag=dc&_json_att=&REPEAT_SUBMIT_TOKEN={1}",
+        "req_url": "/otn/confirmPassenger/queryOrderWaitTime?random={0}&tourFlag=dc&_json_att=",
         "req_type": "get",
         "Referer": "https://kyfw.12306.cn/otn/confirmPassenger/initDc",
         "Host": "kyfw.12306.cn",

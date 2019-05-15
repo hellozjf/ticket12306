@@ -10,6 +10,13 @@ import java.io.IOException;
 public interface TicketService {
 
     /**
+     * 登录前，需要获取和设备相关的cookie
+     * @param personalInfoDTO
+     * @throws IOException
+     */
+    void otnHttpZFLogdevice(PersonalInfoDTO personalInfoDTO) throws IOException;
+
+    /**
      * 获取登录所需要的验证码图片
      * @param personalInfoDTO
      * @throws IOException

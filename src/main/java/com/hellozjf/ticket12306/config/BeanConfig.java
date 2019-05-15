@@ -13,6 +13,7 @@ import com.hellozjf.ticket12306.thread.OrderTicketRunable;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpClient;
 import org.apache.http.client.protocol.HttpClientContext;
+import org.apache.http.cookie.Cookie;
 import org.apache.http.impl.client.HttpClients;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.CommandLineRunner;
@@ -24,6 +25,7 @@ import org.springframework.core.io.Resource;
 import java.io.*;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -156,7 +158,7 @@ public class BeanConfig {
     public CommandLineRunner commandLineRunner(TicketService ticketService) {
         return (args) -> {
             OrderTicketDTO orderTicketDTO = new OrderTicketDTO();
-            orderTicketDTO.setStationDate("2019-05-18");
+            orderTicketDTO.setStationDate("2019-05-22");
             orderTicketDTO.setStationTrain("D379");
             orderTicketDTO.setFromStation("杭州");
             orderTicketDTO.setToStation("宁波");
@@ -167,7 +169,7 @@ public class BeanConfig {
             orderTicketDTO.setEmail("908686171@qq.com");
 
             Runnable runnable = new OrderTicketRunable(orderTicketDTO, ticketService);
-            new Thread(runnable).start();
+//            new Thread(runnable).start();
         };
     }
 }

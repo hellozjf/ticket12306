@@ -97,6 +97,32 @@ public class Test12306 {
         orderTicketDTO.setEmail("908686171@qq.com");
     }
 
+    @Test
+    public void printCookie() throws IOException {
+        // 打印Cookie信息
+        List<Cookie> cookieList = fileCookieStore.getCookies();
+        for (Cookie cookie : cookieList) {
+            log.debug("cookie = {}", cookie);
+        }
+    }
+
+    /**
+     * 登录前，需要获取和设备相关的cookie
+     * @throws IOException
+     */
+    @Test
+    public void otnHttpZFLogdevice() throws IOException {
+
+        // 访问/otn/HttpZF/logdevice，获取结果
+        String result = SendUtils.sendUrl(httpClient, httpClientContext, mapUrlConfDTO, "getDevicesId", null, String.valueOf(System.currentTimeMillis()));
+        result = RegexUtils.getMatch(result, "callbackFunction\\('(.*)'\\)");
+        log.debug("result = {}", result);
+        JsonNode jsonNode = objectMapper.readTree(result);
+        String dfp = jsonNode.get("dfp").textValue();
+        Cookie cookie = new BasicClientCookie("RAIL_DEVICEID", dfp);
+        fileCookieStore.addCookie(cookie);
+    }
+
     /**
      * 获取登录所需要的验证码图片
      *

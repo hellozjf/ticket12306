@@ -55,9 +55,21 @@ public class SendUtils {
         HttpResponse httpResponse = null;
         String urlString = UrlUtils.getUrl(urlConfDTO.getHttpType(), urlConfDTO.getHost(), reqUrl);
         HttpGet httpGet = new HttpGet(urlString);
+        httpGet.setHeader(HttpHeaders.REFERER, urlConfDTO.getReferer());
+        httpGet.setHeader(HttpHeaders.HOST, urlConfDTO.getHost());
+        httpGet.setHeader(HttpHeaders.USER_AGENT, "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_13_4) AppleWebKit/537.36 (KHTML, like Gecko) 12306-electron/1.0.1 Chrome/59.0.3071.115 Electron/1.8.4 Safari/537.36");
+        httpGet.setHeader(HttpHeaders.ACCEPT_ENCODING, "gzip, deflate");
+        httpGet.setHeader(HttpHeaders.CONTENT_TYPE, "application/x-www-form-urlencoded; charset=UTF-8");
+        httpGet.setHeader("Origin", "https://kyfw.12306.cn");
+        httpGet.setHeader("Connection", "keep-alive");
         HttpPost httpPost = new HttpPost(urlString);
         httpPost.setHeader(HttpHeaders.REFERER, urlConfDTO.getReferer());
         httpPost.setHeader(HttpHeaders.HOST, urlConfDTO.getHost());
+        httpPost.setHeader(HttpHeaders.USER_AGENT, "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_13_4) AppleWebKit/537.36 (KHTML, like Gecko) 12306-electron/1.0.1 Chrome/59.0.3071.115 Electron/1.8.4 Safari/537.36");
+        httpPost.setHeader(HttpHeaders.ACCEPT_ENCODING, "gzip, deflate");
+        httpPost.setHeader(HttpHeaders.CONTENT_TYPE, "application/x-www-form-urlencoded; charset=UTF-8");
+        httpPost.setHeader("Origin", "https://kyfw.12306.cn");
+        httpPost.setHeader("Connection", "keep-alive");
         if (postParams != null) {
             fillFormParams(postParams, httpPost);
         }

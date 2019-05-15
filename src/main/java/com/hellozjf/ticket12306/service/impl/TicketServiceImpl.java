@@ -54,6 +54,25 @@ public class TicketServiceImpl implements TicketService {
     private StationNameService stationNameService;
 
     @Override
+    public void otnHttpZFLogdevice(PersonalInfoDTO personalInfoDTO) throws IOException {
+
+        // 从personalInfoDTO中还原私人信息
+        HttpClient httpClient = personalInfoDTO.getHttpClient();
+        HttpClientContext httpClientContext = personalInfoDTO.getHttpClientContext();
+        FileCookieStore fileCookieStore = personalInfoDTO.getFileCookieStore();
+        OrderTicketDTO orderTicketDTO = personalInfoDTO.getOrderTicketDTO();
+
+        // 访问/otn/HttpZF/logdevice，获取结果
+        String result = SendUtils.sendUrl(httpClient, httpClientContext, mapUrlConfDTO, "getDevicesId", null, String.valueOf(System.currentTimeMillis()));
+        result = RegexUtils.getMatch(result, "callbackFunction\\('(.*)'\\)");
+        log.debug("result = {}", result);
+        JsonNode jsonNode = objectMapper.readTree(result);
+        String dfp = jsonNode.get("dfp").textValue();
+        Cookie cookie = new BasicClientCookie(CookieEnum.RAIL_DEVICEID.getKey(), dfp);
+        fileCookieStore.addCookie(cookie);
+    }
+
+    @Override
     public void passportCaptchaCaptchaImage64(PersonalInfoDTO personalInfoDTO) throws IOException {
 
         // 从personalInfoDTO中还原私人信息
@@ -279,6 +298,9 @@ public class TicketServiceImpl implements TicketService {
             // 获取起点代码和终点代码，并存入cookie
             List<String> codeList = getCodeAndSaveToCookie(personalInfoDTO);
 
+            // 插入解决排队慢所需要的cookie
+//            solveSlowLine(personalInfoDTO);
+
             // 获取当前北京时间
             Instant instant = Instant.now();
             ZoneId zoneId = ZoneId.of("Asia/Shanghai");
@@ -307,7 +329,15 @@ public class TicketServiceImpl implements TicketService {
                     ArrayNode arrayNode = (ArrayNode) leftTicketDTO.getData().get("result");
                     String secret = getWantedTicketSecret(personalInfoDTO, arrayNode);
                     if (!StringUtils.isEmpty(secret)) {
+                        // 查询到想要的票
                         break;
+                    } else {
+                        try {
+                            log.debug("未查询到票，等待5秒继续查询");
+                            TimeUnit.SECONDS.sleep(5);
+                        } catch (InterruptedException e) {
+                            log.error("e = {}", e);
+                        }
                     }
                 } else {
                     // 失败，打印错误信息，并抛出异常
@@ -659,7 +689,7 @@ public class TicketServiceImpl implements TicketService {
 
             // 访问/otn/confirmPassenger/queryOrderWaitTime，获取结果
             String result = SendUtils.sendUrl(httpClient, httpClientContext, mapUrlConfDTO, "queryOrderWaitTimeUrl", null,
-                    String.valueOf(System.currentTimeMillis()), globalRepeatSubmitTokenCookie.getValue());
+                    String.valueOf(System.currentTimeMillis()));
             Result12306NormalDTO result12306NormalDTO = objectMapper.readValue(result, Result12306NormalDTO.class);
             log.debug("result12306NormalDTO = {}", objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(result12306NormalDTO));
 
@@ -706,6 +736,7 @@ public class TicketServiceImpl implements TicketService {
 
     @Override
     public void login(PersonalInfoDTO personalInfoDTO) throws IOException {
+        otnHttpZFLogdevice(personalInfoDTO);
         passportCaptchaCaptchaImage64(personalInfoDTO);
         getAnswer(personalInfoDTO);
         passportCaptchaCaptchaCheck(personalInfoDTO);
@@ -827,6 +858,27 @@ public class TicketServiceImpl implements TicketService {
     }
 
     /**
+     * 解决排队慢问题，增加几个相应的cookie
+     */
+    private void solveSlowLine(PersonalInfoDTO personalInfoDTO) throws IOException {
+
+        // 从personalInfoDTO中还原私人信息
+        HttpClient httpClient = personalInfoDTO.getHttpClient();
+        HttpClientContext httpClientContext = personalInfoDTO.getHttpClientContext();
+        FileCookieStore fileCookieStore = personalInfoDTO.getFileCookieStore();
+        OrderTicketDTO orderTicketDTO = personalInfoDTO.getOrderTicketDTO();
+
+        Cookie jcSaveShowIns = new BasicClientCookie(CookieEnum.JC_SAVE_SHOWINS.getKey(), "true");
+        Cookie jcSaveWfdcFlag = new BasicClientCookie(CookieEnum.JC_SAVE_WFDC_FLAG.getKey(), "dc");
+        Cookie jcSaveFromDate = new BasicClientCookie(CookieEnum.JC_SAVE_FROMDATE.getKey(), orderTicketDTO.getStationDate());
+        Cookie jcSaveToDate = new BasicClientCookie(CookieEnum.JC_SAVE_TODATE.getKey(), orderTicketDTO.getStationDate());
+        fileCookieStore.addCookie(jcSaveShowIns);
+        fileCookieStore.addCookie(jcSaveWfdcFlag);
+        fileCookieStore.addCookie(jcSaveFromDate);
+        fileCookieStore.addCookie(jcSaveToDate);
+    }
+
+    /**
      * 查询符合条件的车票，查到返回secret，并存入cookie
      * @param arrayNode
      * @return
@@ -844,6 +896,7 @@ public class TicketServiceImpl implements TicketService {
             String[] rs = r.split("\\|");
             if (rs[3].equalsIgnoreCase(orderTicketDTO.getStationTrain())) {
                 int seatType = mapSeatConf.get(orderTicketDTO.getSeatType());
+                log.debug("列车: {}, 余票: {}", orderTicketDTO.getStationTrain(), rs[seatType]);
                 if (!rs[seatType].equalsIgnoreCase("无") &&
                         !rs[seatType].equalsIgnoreCase("") &&
                         !rs[seatType].equalsIgnoreCase("*")) {
