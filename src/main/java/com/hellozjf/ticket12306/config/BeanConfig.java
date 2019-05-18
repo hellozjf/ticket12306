@@ -169,7 +169,7 @@ public class BeanConfig {
             orderTicketDTO.setEmail("908686171@qq.com");
 
             Runnable runnable = new OrderTicketRunable(orderTicketDTO, ticketService);
-//            new Thread(runnable).start();
+            new Thread(runnable).start();
         };
     }
 }

@@ -26,6 +26,7 @@ public enum ResultEnum {
     OTN_CONFIRM_PASSENGER_GET_QUEUE_COUNT_ERROR(14, "获取排队数失败"),
     OTN_CONFIRM_PASSENGER_CONFIRM_SINGLE_FOR_QUEUE_ERROR(15, "确认排队失败"),
     OTN_CONFIRM_PASSENGER_QUERY_ORDER_WAIT_TIME_ERROR(16, "等待排队完成失败"),
+    OTN_LOGIN_CHECKUSER_ERROR(17, "checkUser失败"),
     ;
 
     Integer code;

@@ -114,7 +114,7 @@ public class Test12306 {
     public void otnHttpZFLogdevice() throws IOException {
 
         // 访问/otn/HttpZF/logdevice，获取结果
-        String result = SendUtils.sendUrl(httpClient, httpClientContext, mapUrlConfDTO, "getDevicesId", null, String.valueOf(System.currentTimeMillis()));
+        String result = SendUtils.sendUrl(httpClient, httpClientContext, fileCookieStore, mapUrlConfDTO, "getDevicesId", null, String.valueOf(System.currentTimeMillis()));
         result = RegexUtils.getMatch(result, "callbackFunction\\('(.*)'\\)");
         log.debug("result = {}", result);
         JsonNode jsonNode = objectMapper.readTree(result);
@@ -132,7 +132,7 @@ public class Test12306 {
     public void passportCaptchaCaptchaImage64() throws IOException {
 
         // 访问/passport/captcha/captcha-image64，获取结果
-        String result = SendUtils.sendUrl(httpClient, httpClientContext, mapUrlConfDTO, "getCodeImg1", null, String.valueOf(System.currentTimeMillis()));
+        String result = SendUtils.sendUrl(httpClient, httpClientContext, fileCookieStore, mapUrlConfDTO, "getCodeImg1", null, String.valueOf(System.currentTimeMillis()));
         result = RegexUtils.getMatch(result, ".*\\((.*)\\)");
         Result12306ImageDTO result12306ImageDTO = objectMapper.readValue(result, Result12306ImageDTO.class);
         log.debug("Result12306ImageDTO = {}", objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(result12306ImageDTO));
@@ -198,7 +198,7 @@ public class Test12306 {
         postParams.put("login_site", "E");
         postParams.put("rand", "sjrand");
         postParams.put("_json_attr", "");
-        String result = SendUtils.sendUrl(httpClient, httpClientContext, mapUrlConfDTO, "codeCheck", postParams);
+        String result = SendUtils.sendUrl(httpClient, httpClientContext, fileCookieStore, mapUrlConfDTO, "codeCheck", postParams);
         CheckDTO checkDTO = objectMapper.readValue(result, CheckDTO.class);
         log.debug("checkDTO = {}", objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(checkDTO));
 
@@ -229,7 +229,7 @@ public class Test12306 {
         postParams.put("_json_attr", "");
         String result = null;
         while (true) {
-            result = SendUtils.sendUrl(httpClient, httpClientContext, mapUrlConfDTO, "login", postParams);
+            result = SendUtils.sendUrl(httpClient, httpClientContext, fileCookieStore, mapUrlConfDTO, "login", postParams);
             if (! StringUtils.isEmpty(result)) {
                 break;
             }
@@ -267,7 +267,7 @@ public class Test12306 {
         // 访问/passport/web/auth/uamtk，获取结果
         Map<String, String> postParams = new HashMap<>();
         postParams.put("appid", "otn");
-        String result = SendUtils.sendUrl(httpClient, httpClientContext, mapUrlConfDTO, "auth", postParams);
+        String result = SendUtils.sendUrl(httpClient, httpClientContext, fileCookieStore, mapUrlConfDTO, "auth", postParams);
         AuthUamtkDTO authUamtkDTO = objectMapper.readValue(result, AuthUamtkDTO.class);
         log.debug("authUamtkDTO = {}", objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(authUamtkDTO));
 
@@ -298,7 +298,7 @@ public class Test12306 {
         // 访问/otn/uamauthclient，获取结果
         Map<String, String> postParams = new HashMap<>();
         postParams.put("tk", newapptk.getValue());
-        String result = SendUtils.sendUrl(httpClient, httpClientContext, mapUrlConfDTO, "uamauthclient", postParams);
+        String result = SendUtils.sendUrl(httpClient, httpClientContext, fileCookieStore, mapUrlConfDTO, "uamauthclient", postParams);
         UamauthclientDTO uamauthclientDTO = objectMapper.readValue(result, UamauthclientDTO.class);
         log.debug("uamauthclientDTO = {}", objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(uamauthclientDTO));
 
@@ -325,7 +325,7 @@ public class Test12306 {
     private List<String> otnLeftTicketInit() throws IOException {
 
         // 访问/otn/leftTicket/init，获取结果
-        String result = SendUtils.sendUrl(httpClient, httpClientContext, mapUrlConfDTO, "left_ticket_init", null);
+        String result = SendUtils.sendUrl(httpClient, httpClientContext, fileCookieStore, mapUrlConfDTO, "left_ticket_init", null);
         String leftTicketQueryUrl = RegexUtils.getMatch(result, "var CLeftTicketUrl = '(.*)';");
         String stationVersionUrl = RegexUtils.getMatch(result, "<script .* src=\"(/otn/resources/js/framework/station_name.js\\?station_version=.*)\" .*</script>");
         log.debug("leftTicketQueryUrl = {}", leftTicketQueryUrl);
@@ -416,7 +416,7 @@ public class Test12306 {
      */
     private boolean isLogin() throws IOException {
         // 访问/otn/login/conf，获取结果
-        String result = SendUtils.sendUrl(httpClient, httpClientContext, mapUrlConfDTO, "loginConf", null);
+        String result = SendUtils.sendUrl(httpClient, httpClientContext, fileCookieStore, mapUrlConfDTO, "loginConf", null);
         Result12306NormalDTO result12306NormalDTO = objectMapper.readValue(result, Result12306NormalDTO.class);
         log.debug("result12306NormalDTO = {}", objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(result12306NormalDTO));
 
@@ -471,7 +471,7 @@ public class Test12306 {
                 }
 
                 // 访问/otn/leftTicket/query，获取结果
-                String result = SendUtils.sendUrl(httpClient, httpClientContext, mapUrlConfDTO, "select_url", null,
+                String result = SendUtils.sendUrl(httpClient, httpClientContext, fileCookieStore, mapUrlConfDTO, "select_url", null,
                         orderTicketDTO.getStationDate(),
                         codeList.get(0),
                         codeList.get(1),
@@ -525,7 +525,7 @@ public class Test12306 {
         postParams.put("purpose_codes", "ADULT");
         postParams.put("query_from_station_name", fromStationCode.getValue());
         postParams.put("toStationCode", toStationCode.getValue());
-        String result = SendUtils.sendUrl(httpClient, httpClientContext, mapUrlConfDTO, "submit_station_url", postParams);
+        String result = SendUtils.sendUrl(httpClient, httpClientContext, fileCookieStore, mapUrlConfDTO, "submit_station_url", postParams);
         Result12306NormalDTO result12306NormalDTO = objectMapper.readValue(result, Result12306NormalDTO.class);
         log.debug("result12306NormalDTO = {}", objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(result12306NormalDTO));
 
@@ -544,7 +544,7 @@ public class Test12306 {
     public void otnConfirmPassengerInitDc() throws IOException {
 
         // 访问/otn/confirmPassenger/initDc，获取结果
-        String result = SendUtils.sendUrl(httpClient, httpClientContext, mapUrlConfDTO, "initdc_url", null);
+        String result = SendUtils.sendUrl(httpClient, httpClientContext, fileCookieStore, mapUrlConfDTO, "initdc_url", null);
         String globalRepeatSubmitToken = RegexUtils.getMatch(result, "var globalRepeatSubmitToken = '(.*)';");
         String ticketInfoForPassengerForm = RegexUtils.getMatch(result, "var ticketInfoForPassengerForm=(.*);");
         ticketInfoForPassengerForm = ticketInfoForPassengerForm.replaceAll("'", "\"");
@@ -576,7 +576,7 @@ public class Test12306 {
         Map<String, String> postParams = new HashMap<>();
         postParams.put("_json_attr", "");
         postParams.put("REPEAT_SUBMIT_TOKEN", globalRepeatSubmitTokenCookie.getValue());
-        String result = SendUtils.sendUrl(httpClient, httpClientContext, mapUrlConfDTO, "get_passengerDTOs", postParams);
+        String result = SendUtils.sendUrl(httpClient, httpClientContext, fileCookieStore, mapUrlConfDTO, "get_passengerDTOs", postParams);
         Result12306NormalDTO result12306NormalDTO = objectMapper.readValue(result, Result12306NormalDTO.class);
         log.debug("result12306NormalDTO = {}", objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(result12306NormalDTO));
 
@@ -654,7 +654,7 @@ public class Test12306 {
         postParams.put("whatSelect", "1");
         postParams.put("_json_attr", "");
         postParams.put("REPEAT_SUBMIT_TOKEN", globalRepeatSubmitTokenCookie.getValue());
-        String result = SendUtils.sendUrl(httpClient, httpClientContext, mapUrlConfDTO, "checkOrderInfoUrl", postParams);
+        String result = SendUtils.sendUrl(httpClient, httpClientContext, fileCookieStore, mapUrlConfDTO, "checkOrderInfoUrl", postParams);
         Result12306NormalDTO result12306NormalDTO = objectMapper.readValue(result, Result12306NormalDTO.class);
         log.debug("result12306NormalDTO = {}", objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(result12306NormalDTO));
 
@@ -693,7 +693,7 @@ public class Test12306 {
         postParams.put("train_location", ticketInfoForPassengerFormNode.get("train_location").textValue());
         postParams.put("_json_att", "");
         postParams.put("REPEAT_SUBMIT_TOKEN", globalRepeatSubmitTokenCookie.getValue());
-        String result = SendUtils.sendUrl(httpClient, httpClientContext, mapUrlConfDTO, "getQueueCountUrl", postParams);
+        String result = SendUtils.sendUrl(httpClient, httpClientContext, fileCookieStore, mapUrlConfDTO, "getQueueCountUrl", postParams);
         Result12306NormalDTO result12306NormalDTO = objectMapper.readValue(result, Result12306NormalDTO.class);
         log.debug("result12306NormalDTO = {}", objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(result12306NormalDTO));
 
@@ -755,7 +755,7 @@ public class Test12306 {
         postParams.put("dwAll", "N");
         postParams.put("_json_att", "");
         postParams.put("REPEAT_SUBMIT_TOKEN", globalRepeatSubmitTokenCookie.getValue());
-        String result = SendUtils.sendUrl(httpClient, httpClientContext, mapUrlConfDTO, "checkQueueOrderUrl", postParams);
+        String result = SendUtils.sendUrl(httpClient, httpClientContext, fileCookieStore, mapUrlConfDTO, "checkQueueOrderUrl", postParams);
         Result12306NormalDTO result12306NormalDTO = objectMapper.readValue(result, Result12306NormalDTO.class);
         log.debug("result12306NormalDTO = {}", objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(result12306NormalDTO));
 
@@ -776,7 +776,7 @@ public class Test12306 {
         while (true) {
 
             // 访问/otn/confirmPassenger/queryOrderWaitTime，获取结果
-            String result = SendUtils.sendUrl(httpClient, httpClientContext, mapUrlConfDTO, "queryOrderWaitTimeUrl", null,
+            String result = SendUtils.sendUrl(httpClient, httpClientContext, fileCookieStore, mapUrlConfDTO, "queryOrderWaitTimeUrl", null,
                     String.valueOf(System.currentTimeMillis()));
             Result12306NormalDTO result12306NormalDTO = objectMapper.readValue(result, Result12306NormalDTO.class);
             log.debug("result12306NormalDTO = {}", objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(result12306NormalDTO));

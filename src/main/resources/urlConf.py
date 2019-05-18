@@ -322,7 +322,7 @@ urls = {
         "req_type": "post",
         "Referer": "https://kyfw.12306.cn/otn/confirmPassenger/initDc",
         "Host": "kyfw.12306.cn",
-        "re_try": 10,
+        "re_try": 1,
         "re_time": 0.01,
         "s_time": 0.1,
         "is_logger": False,

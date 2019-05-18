@@ -1,6 +1,7 @@
 package com.hellozjf.ticket12306.util;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.hellozjf.ticket12306.custom.FileCookieStore;
 import com.hellozjf.ticket12306.dto.UrlConfDTO;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.*;
@@ -39,6 +40,7 @@ public class SendUtils {
      */
     public static String sendUrl(HttpClient httpClient,
                                  HttpClientContext httpClientContext,
+                                 FileCookieStore fileCookieStore,
                                  Map<String, UrlConfDTO> mapUrlConfDTO,
                                  String url,
                                  Map<String, String> postParams,
@@ -75,6 +77,7 @@ public class SendUtils {
         }
 
         // 如果没有得到值，则一直重试，重试到有值，或者超过最大次数为止
+        ObjectMapper objectMapper = new ObjectMapper();
         for (int i = 0; i < urlConfDTO.getReTry(); i++) {
             if (postParams != null) {
                 httpResponse = httpClient.execute(httpPost, httpClientContext);
@@ -86,12 +89,12 @@ public class SendUtils {
             if (!StringUtils.isEmpty(result)) {
                 log.info("url: {}", urlString);
                 if (postParams != null) {
-                    ObjectMapper objectMapper = new ObjectMapper();
                     log.info("input: {}", objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(postParams));
                 } else {
                     log.info("input: null");
                 }
                 log.info("output: {}", result);
+                log.info("cookie: {}", fileCookieStore.getCookies());
                 return result;
             }
             try {
@@ -101,7 +104,9 @@ public class SendUtils {
             }
         }
 
-        log.error("sendUrl未获取到任何数据");
+        log.info("url: {}", urlString);
+        log.info("input: {}", objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(postParams));
+        log.info("output: null");
         HttpEntity httpEntity = httpResponse.getEntity();
         String result = EntityUtils.toString(httpEntity);
         return result;

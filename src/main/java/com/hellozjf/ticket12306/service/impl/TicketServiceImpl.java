@@ -63,7 +63,7 @@ public class TicketServiceImpl implements TicketService {
         OrderTicketDTO orderTicketDTO = personalInfoDTO.getOrderTicketDTO();
 
         // 访问/otn/HttpZF/logdevice，获取结果
-        String result = SendUtils.sendUrl(httpClient, httpClientContext, mapUrlConfDTO, "getDevicesId", null, String.valueOf(System.currentTimeMillis()));
+        String result = SendUtils.sendUrl(httpClient, httpClientContext, fileCookieStore, mapUrlConfDTO, "getDevicesId", null, String.valueOf(System.currentTimeMillis()));
         result = RegexUtils.getMatch(result, "callbackFunction\\('(.*)'\\)");
         log.debug("result = {}", result);
         JsonNode jsonNode = objectMapper.readTree(result);
@@ -82,7 +82,7 @@ public class TicketServiceImpl implements TicketService {
         OrderTicketDTO orderTicketDTO = personalInfoDTO.getOrderTicketDTO();
 
         // 访问/passport/captcha/captcha-image64，获取结果
-        String result = SendUtils.sendUrl(httpClient, httpClientContext, mapUrlConfDTO, "getCodeImg1", null, String.valueOf(System.currentTimeMillis()));
+        String result = SendUtils.sendUrl(httpClient, httpClientContext, fileCookieStore, mapUrlConfDTO, "getCodeImg1", null, String.valueOf(System.currentTimeMillis()));
         result = RegexUtils.getMatch(result, ".*\\((.*)\\)");
         Result12306ImageDTO result12306ImageDTO = objectMapper.readValue(result, Result12306ImageDTO.class);
         log.debug("Result12306ImageDTO = {}", objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(result12306ImageDTO));
@@ -152,7 +152,7 @@ public class TicketServiceImpl implements TicketService {
         postParams.put("login_site", "E");
         postParams.put("rand", "sjrand");
         postParams.put("_json_attr", "");
-        String result = SendUtils.sendUrl(httpClient, httpClientContext, mapUrlConfDTO, "codeCheck", postParams);
+        String result = SendUtils.sendUrl(httpClient, httpClientContext, fileCookieStore, mapUrlConfDTO, "codeCheck", postParams);
         CheckDTO checkDTO = objectMapper.readValue(result, CheckDTO.class);
         log.debug("checkDTO = {}", objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(checkDTO));
 
@@ -185,7 +185,7 @@ public class TicketServiceImpl implements TicketService {
         postParams.put("_json_attr", "");
         String result = null;
         while (true) {
-            result = SendUtils.sendUrl(httpClient, httpClientContext, mapUrlConfDTO, "login", postParams);
+            result = SendUtils.sendUrl(httpClient, httpClientContext, fileCookieStore, mapUrlConfDTO, "login", postParams);
             if (! StringUtils.isEmpty(result)) {
                 break;
             }
@@ -225,7 +225,7 @@ public class TicketServiceImpl implements TicketService {
         // 访问/passport/web/auth/uamtk，获取结果
         Map<String, String> postParams = new HashMap<>();
         postParams.put("appid", "otn");
-        String result = SendUtils.sendUrl(httpClient, httpClientContext, mapUrlConfDTO, "auth", postParams);
+        String result = SendUtils.sendUrl(httpClient, httpClientContext, fileCookieStore, mapUrlConfDTO, "auth", postParams);
         AuthUamtkDTO authUamtkDTO = objectMapper.readValue(result, AuthUamtkDTO.class);
         log.debug("authUamtkDTO = {}", objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(authUamtkDTO));
 
@@ -258,7 +258,7 @@ public class TicketServiceImpl implements TicketService {
         // 访问/otn/uamauthclient，获取结果
         Map<String, String> postParams = new HashMap<>();
         postParams.put("tk", newapptk.getValue());
-        String result = SendUtils.sendUrl(httpClient, httpClientContext, mapUrlConfDTO, "uamauthclient", postParams);
+        String result = SendUtils.sendUrl(httpClient, httpClientContext, fileCookieStore, mapUrlConfDTO, "uamauthclient", postParams);
         UamauthclientDTO uamauthclientDTO = objectMapper.readValue(result, UamauthclientDTO.class);
         log.debug("uamauthclientDTO = {}", uamauthclientDTO);
 
@@ -316,7 +316,7 @@ public class TicketServiceImpl implements TicketService {
                 }
 
                 // 访问/otn/leftTicket/query，获取结果
-                String result = SendUtils.sendUrl(httpClient, httpClientContext, mapUrlConfDTO, "select_url", null,
+                String result = SendUtils.sendUrl(httpClient, httpClientContext, fileCookieStore, mapUrlConfDTO, "select_url", null,
                         orderTicketDTO.getStationDate(),
                         codeList.get(0),
                         codeList.get(1),
@@ -358,6 +358,41 @@ public class TicketServiceImpl implements TicketService {
     }
 
     @Override
+    public void otnLoginCheckUser(PersonalInfoDTO personalInfoDTO) throws IOException {
+
+        // 从personalInfoDTO中还原私人信息
+        HttpClient httpClient = personalInfoDTO.getHttpClient();
+        HttpClientContext httpClientContext = personalInfoDTO.getHttpClientContext();
+        FileCookieStore fileCookieStore = personalInfoDTO.getFileCookieStore();
+        OrderTicketDTO orderTicketDTO = personalInfoDTO.getOrderTicketDTO();
+
+        // 访问/otn/login/checkUser，获取结果
+        Map<String, String> postParams = new HashMap<>();
+        postParams.put("_json_att", "");
+        String result = SendUtils.sendUrl(httpClient, httpClientContext, fileCookieStore, mapUrlConfDTO, "check_user_url", postParams);
+        Result12306NormalDTO result12306NormalDTO = objectMapper.readValue(result, Result12306NormalDTO.class);
+        log.debug("result12306NormalDTO = {}", objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(result12306NormalDTO));
+
+        if (result12306NormalDTO.getStatus()) {
+            if (result12306NormalDTO.getData().get("flag").booleanValue()) {
+                // 成功
+            } else {
+                // 失败，打印错误信息，并抛出异常
+                String errorMsg = objectMapper.writeValueAsString(result12306NormalDTO.getMessages());
+                log.error("error = {}", errorMsg);
+                throw new Ticket12306Exception(ResultEnum.OTN_LOGIN_CHECKUSER_ERROR.getCode(),
+                        ResultEnum.OTN_LOGIN_CHECKUSER_ERROR.getMessage() + ":" + errorMsg);
+            }
+        } else {
+            // 失败，打印错误信息，并抛出异常
+            String errorMsg = objectMapper.writeValueAsString(result12306NormalDTO.getMessages());
+            log.error("error = {}", errorMsg);
+            throw new Ticket12306Exception(ResultEnum.OTN_LOGIN_CHECKUSER_ERROR.getCode(),
+                    ResultEnum.OTN_LOGIN_CHECKUSER_ERROR.getMessage() + ":" + errorMsg);
+        }
+    }
+
+    @Override
     public void otnLeftTicketSubmitOrderRequest(PersonalInfoDTO personalInfoDTO) throws IOException {
 
         // 从personalInfoDTO中还原私人信息
@@ -386,7 +421,7 @@ public class TicketServiceImpl implements TicketService {
         postParams.put("toStationCode", toStationCode.getValue());
 
         while (true) {
-            String result = SendUtils.sendUrl(httpClient, httpClientContext, mapUrlConfDTO, "submit_station_url", postParams);
+            String result = SendUtils.sendUrl(httpClient, httpClientContext, fileCookieStore, mapUrlConfDTO, "submit_station_url", postParams);
             log.debug("result = {}", result);
             if (StringUtils.isEmpty(result)) {
                 try {
@@ -422,7 +457,9 @@ public class TicketServiceImpl implements TicketService {
         OrderTicketDTO orderTicketDTO = personalInfoDTO.getOrderTicketDTO();
 
         // 访问/otn/confirmPassenger/initDc，获取结果
-        String result = SendUtils.sendUrl(httpClient, httpClientContext, mapUrlConfDTO, "initdc_url", null);
+        Map<String, String> postParams = new HashMap<>();
+        postParams.put("_json_att", "");
+        String result = SendUtils.sendUrl(httpClient, httpClientContext, fileCookieStore, mapUrlConfDTO, "initdc_url", postParams);
         String globalRepeatSubmitToken = RegexUtils.getMatch(result, "var globalRepeatSubmitToken = '(.*)';");
         String ticketInfoForPassengerForm = RegexUtils.getMatch(result, "var ticketInfoForPassengerForm=(.*);");
         ticketInfoForPassengerForm = ticketInfoForPassengerForm.replaceAll("'", "\"");
@@ -460,7 +497,7 @@ public class TicketServiceImpl implements TicketService {
         Map<String, String> postParams = new HashMap<>();
         postParams.put("_json_attr", "");
         postParams.put("REPEAT_SUBMIT_TOKEN", globalRepeatSubmitTokenCookie.getValue());
-        String result = SendUtils.sendUrl(httpClient, httpClientContext, mapUrlConfDTO, "get_passengerDTOs", postParams);
+        String result = SendUtils.sendUrl(httpClient, httpClientContext, fileCookieStore, mapUrlConfDTO, "get_passengerDTOs", postParams);
         Result12306NormalDTO result12306NormalDTO = objectMapper.readValue(result, Result12306NormalDTO.class);
         log.debug("result12306NormalDTO = {}", objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(result12306NormalDTO));
 
@@ -489,6 +526,20 @@ public class TicketServiceImpl implements TicketService {
             throw new Ticket12306Exception(ResultEnum.OTN_CONFIRM_PASSENGER_GET_PASSENGER_DTOS_ERROR.getCode(),
                     ResultEnum.OTN_CONFIRM_PASSENGER_GET_PASSENGER_DTOS_ERROR.getMessage() + ":" + errorMsg);
         }
+    }
+
+    @Override
+    public void otnPasscodeNewGetPassCodeNew(PersonalInfoDTO personalInfoDTO) throws IOException {
+
+        // 从personalInfoDTO中还原私人信息
+        HttpClient httpClient = personalInfoDTO.getHttpClient();
+        HttpClientContext httpClientContext = personalInfoDTO.getHttpClientContext();
+        FileCookieStore fileCookieStore = personalInfoDTO.getFileCookieStore();
+        OrderTicketDTO orderTicketDTO = personalInfoDTO.getOrderTicketDTO();
+
+        // 访问/otn/passcodeNew/getPassCodeNew，获取结果
+        String result = SendUtils.sendUrl(httpClient, httpClientContext, fileCookieStore, mapUrlConfDTO, "codeImgByOrder", null, String.valueOf(System.currentTimeMillis()));
+        log.debug("result = {}", result);
     }
 
     @Override
@@ -544,7 +595,7 @@ public class TicketServiceImpl implements TicketService {
         postParams.put("whatSelect", "1");
         postParams.put("_json_attr", "");
         postParams.put("REPEAT_SUBMIT_TOKEN", globalRepeatSubmitTokenCookie.getValue());
-        String result = SendUtils.sendUrl(httpClient, httpClientContext, mapUrlConfDTO, "checkOrderInfoUrl", postParams);
+        String result = SendUtils.sendUrl(httpClient, httpClientContext, fileCookieStore, mapUrlConfDTO, "checkOrderInfoUrl", postParams);
         Result12306NormalDTO result12306NormalDTO = objectMapper.readValue(result, Result12306NormalDTO.class);
         log.debug("result12306NormalDTO = {}", objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(result12306NormalDTO));
 
@@ -589,7 +640,7 @@ public class TicketServiceImpl implements TicketService {
         postParams.put("train_location", ticketInfoForPassengerFormNode.get("train_location").textValue());
         postParams.put("_json_att", "");
         postParams.put("REPEAT_SUBMIT_TOKEN", globalRepeatSubmitTokenCookie.getValue());
-        String result = SendUtils.sendUrl(httpClient, httpClientContext, mapUrlConfDTO, "getQueueCountUrl", postParams);
+        String result = SendUtils.sendUrl(httpClient, httpClientContext, fileCookieStore, mapUrlConfDTO, "getQueueCountUrl", postParams);
         Result12306NormalDTO result12306NormalDTO = objectMapper.readValue(result, Result12306NormalDTO.class);
         log.debug("result12306NormalDTO = {}", objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(result12306NormalDTO));
 
@@ -657,7 +708,7 @@ public class TicketServiceImpl implements TicketService {
         postParams.put("dwAll", "N");
         postParams.put("_json_att", "");
         postParams.put("REPEAT_SUBMIT_TOKEN", globalRepeatSubmitTokenCookie.getValue());
-        String result = SendUtils.sendUrl(httpClient, httpClientContext, mapUrlConfDTO, "checkQueueOrderUrl", postParams);
+        String result = SendUtils.sendUrl(httpClient, httpClientContext, fileCookieStore, mapUrlConfDTO, "checkQueueOrderUrl", postParams);
         Result12306NormalDTO result12306NormalDTO = objectMapper.readValue(result, Result12306NormalDTO.class);
         log.debug("result12306NormalDTO = {}", objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(result12306NormalDTO));
 
@@ -688,7 +739,7 @@ public class TicketServiceImpl implements TicketService {
         while (true) {
 
             // 访问/otn/confirmPassenger/queryOrderWaitTime，获取结果
-            String result = SendUtils.sendUrl(httpClient, httpClientContext, mapUrlConfDTO, "queryOrderWaitTimeUrl", null,
+            String result = SendUtils.sendUrl(httpClient, httpClientContext, fileCookieStore, mapUrlConfDTO, "queryOrderWaitTimeUrl", null,
                     String.valueOf(System.currentTimeMillis()));
             Result12306NormalDTO result12306NormalDTO = objectMapper.readValue(result, Result12306NormalDTO.class);
             log.debug("result12306NormalDTO = {}", objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(result12306NormalDTO));
@@ -748,9 +799,11 @@ public class TicketServiceImpl implements TicketService {
     @Override
     public void order(PersonalInfoDTO personalInfoDTO) throws IOException {
         otnLeftTicketQuery(personalInfoDTO);
+        otnLoginCheckUser(personalInfoDTO);
         otnLeftTicketSubmitOrderRequest(personalInfoDTO);
         otnConfirmPassengerInitDc(personalInfoDTO);
         otnConfirmPassengerGetPassengerDTOs(personalInfoDTO);
+        otnPasscodeNewGetPassCodeNew(personalInfoDTO);
         otnConfirmPassengerCheckOrderInfo(personalInfoDTO);
         otnConfirmPassengerGetQueueCount(personalInfoDTO);
         otnConfirmPassengerConfirmSingleForQueue(personalInfoDTO);
@@ -788,7 +841,7 @@ public class TicketServiceImpl implements TicketService {
         OrderTicketDTO orderTicketDTO = personalInfoDTO.getOrderTicketDTO();
 
         // 访问/otn/leftTicket/init，获取结果
-        String result = SendUtils.sendUrl(httpClient, httpClientContext, mapUrlConfDTO, "left_ticket_init", null);
+        String result = SendUtils.sendUrl(httpClient, httpClientContext, fileCookieStore, mapUrlConfDTO, "left_ticket_init", null);
         String leftTicketQueryUrl = RegexUtils.getMatch(result, "var CLeftTicketUrl = '(.*)';");
         String stationVersionUrl = RegexUtils.getMatch(result, "<script .* src=\"(/otn/resources/js/framework/station_name.js\\?station_version=.*)\" .*</script>");
         log.debug("leftTicketQueryUrl = {}", leftTicketQueryUrl);
@@ -925,7 +978,7 @@ public class TicketServiceImpl implements TicketService {
         FileCookieStore fileCookieStore = personalInfoDTO.getFileCookieStore();
         OrderTicketDTO orderTicketDTO = personalInfoDTO.getOrderTicketDTO();
         // 访问/otn/login/conf，获取结果
-        String result = SendUtils.sendUrl(httpClient, httpClientContext, mapUrlConfDTO, "loginConf", null);
+        String result = SendUtils.sendUrl(httpClient, httpClientContext, fileCookieStore, mapUrlConfDTO, "loginConf", null);
         Result12306NormalDTO result12306NormalDTO = objectMapper.readValue(result, Result12306NormalDTO.class);
         log.debug("result12306NormalDTO = {}", objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(result12306NormalDTO));
 

@@ -66,6 +66,13 @@ public interface TicketService {
     void otnLeftTicketQuery(PersonalInfoDTO personalInfoDTO) throws IOException;
 
     /**
+     * checkUser，具体我也不太清楚干什么
+     * @param personalInfoDTO
+     * @throws IOException
+     */
+    void otnLoginCheckUser(PersonalInfoDTO personalInfoDTO) throws IOException;
+
+    /**
      * 提交订单
      * @param personalInfoDTO
      * @throws IOException
@@ -85,6 +92,13 @@ public interface TicketService {
      * @throws IOException
      */
     void otnConfirmPassengerGetPassengerDTOs(PersonalInfoDTO personalInfoDTO) throws IOException;
+
+    /**
+     * otnPasscodeNewGetPassCodeNew
+     * @param personalInfoDTO
+     * @throws IOException
+     */
+    void otnPasscodeNewGetPassCodeNew(PersonalInfoDTO personalInfoDTO) throws IOException;
 
     /**
      * 确认订单信息
